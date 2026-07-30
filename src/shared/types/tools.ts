@@ -1,6 +1,6 @@
 // ====== 工具系统类型 ======
 
-import type { ReasoningEffort } from './core'
+import type { ReasoningEffort, Mode } from './core'
 
 /** JSON Schema 属性定义 */
 export interface ToolParamProperty {
@@ -96,4 +96,19 @@ export interface ToolContext {
   helperCommandTimeout?: number
   /** MCP 服务器连接超时（秒） */
   mcpConnectTimeout?: number
+
+  // ---- 视觉模型（Agnes 2.5 Flash）----
+  /** 视觉模型 API Key */
+  visionApiKey?: string
+  /** 视觉模型 Base URL */
+  visionBaseUrl?: string
+  /** 视觉模型名称 */
+  visionModel?: string
+
+  // ---- 模式 ----
+  /** 当前会话模式 — 记忆工具用于定位对应模式的记忆文件 */
+  mode?: Mode
+
+  /** 请求用户输入（弹窗）— Plan 提问和 Spec 审核使用 */
+  requestUserInput?: (type: 'ask' | 'review', title: string, content: string) => Promise<{ confirmed: boolean; response?: string }>
 }

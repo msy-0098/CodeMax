@@ -11,147 +11,14 @@ import type {
   StreamingSegment,
 } from '../../../shared/types'
 import { runStream, STREAMING_RESET, buildPersistPatch } from './runStream'
-import { createCanvasSlice, type CanvasSlice } from './canvasSlice'
-import { createBrowserSlice, type BrowserSlice } from './browserSlice'
-import { createAgentTodoSlice, type AgentTodoSlice } from './agentTodoSlice'
+import { createDesignSlice } from './slices/designSlice'
+import { createBrowserSlice } from './slices/browserSlice'
+import { createSkillsSlice } from './slices/skillsSlice'
+import { createAgentSlice } from './slices/agentSlice'
 
-/** Agent 任务列表项 — 镜像 TodoWriteTool 的 TodoItem */
-export interface AgentTodo {
-  content: string
-  status: 'pending' | 'in_progress' | 'completed'
-  activeForm?: string
-  level?: number
-  assignee?: string
-}
-
-/** 自由画布上的组件项 */
-export interface CanvasItem {
-  id: string
-  componentId: string
-  componentName: string
-  componentNameCn: string
-  category: string
-  dependencies: string[]
-  x: number   // px 相对于画布容器
-  y: number   // px
-  width: number
-  height: number
-  zIndex: number
-}
-
-export interface StoreState
-  extends CanvasSlice, BrowserSlice, AgentTodoSlice {
-  // ---- 数据 ----
-  settings: AppSettings | null
-  conversations: Conversation[]
-  currentMode: Mode
-  currentConversationId: string | null
-  /** 每个模式各自追踪当前会话 ID，切换模式时自动切换 */
-  currentConversationIds: Record<Mode, string | null>
-  isStreaming: boolean
-  streamingContent: string
-  streamingReasoning: string
-  /** 流式工作步骤（按时间顺序，每轮 Agent Loop 一个 segment） */
-  streamingSegments: StreamingSegment[]
-  streamingConversationId: string | null
-  streamingTokens: number | null
-  /** 流式期间累积缓存命中 token */
-  streamingCacheHitTokens: number | null
-  /** 流式期间累积 prompt token */
-  streamingPromptTokens: number | null
-  /** 当前正在执行的工具调用列表 */
-  streamingToolCalls: { name: string; status: 'thinking' | 'calling' | 'done'; args?: string; result?: string; toolCallId?: string }[]
-  /** 流式回复中 assistant 占位消息的 ID（预插入 conversations，流式期间原地更新） */
-  streamingAssistantId: string | null
-  showSettings: boolean
-  error: string | null
-
-  /** 联网搜索开关 — 开启后 sendMessage 会注入联网提示 */
-  networkSearchOn: boolean
-  /** Auto Mode 等级：off（手动确认）、safe（仅读操作自动）、yolo（全部自动） */
-  autoModeLevel: 'off' | 'safe' | 'yolo'
-  /** 当前工作目录/项目路径（从当前会话的 projectPath 派生） */
-  projectPath: string
-  /** 附加文件列表（文件路径） */
-  attachedFiles: string[]
-
-  /** AI 专家库面板是否显示 */
-  showAgentPanel: boolean
-  /** 已激活的专家 ID 列表 */
-  activeExperts: string[]
-
-  /** 设计模式：已绑定的设计风格 ID（从 151 个风格库中选择） */
-  activeStyleId: string | null
-
-  /** 设计模式：已选择的 UI 组件 ID 列表（从 139 个组件库中多选） */
-  selectedComponentIds: string[]
-
-  /** Token 统计面板是否显示 */
-  showTokenStats: boolean
-
-  // ---- 内部 ----
-  _persist: () => Promise<void>
-
-  // ---- 初始化 ----
-  init: () => Promise<void>
-
-  // ---- 设置 ----
-  updateSettings: (partial: Partial<AppSettings>) => Promise<void>
-  setShowSettings: (show: boolean) => void
-
-  // ---- 模式 ----
-  setMode: (mode: Mode) => void
-
-  // ---- 会话 ----
-  newConversation: (mode?: Mode) => string | null
-  selectConversation: (id: string) => void
-  deleteConversation: (id: string) => void
-  renameConversation: (id: string, title: string) => void
-  clearAllConversations: () => void
-
-  // ---- 聊天 ----
-  sendMessage: (text: string, options?: { skipNetworkHint?: boolean; expertIds?: string[]; slashCommand?: { cmd: string; systemHint: string } }) => Promise<void>
-  regenerate: () => Promise<void>
-  cancelStream: () => Promise<void>
-
-  // ---- 辅助 ----
-  getCurrentConversation: () => Conversation | null
-  setNetworkSearchOn: (on: boolean) => void
-  setAutoModeLevel: (level: 'off' | 'safe' | 'yolo') => void
-  setProjectPath: (path: string) => void
-  addAttachedFile: (path: string) => void
-  removeAttachedFile: (path: string) => void
-  clearAttachedFiles: () => void
-  /** 重新加载会话列表 */
-  reloadConversations: () => Promise<void>
-  /** 打开项目目录：弹窗选目录 → 创建/更新会话 → 自动触发扫描 */
-  openProject: () => Promise<void>
-
-  // ---- AI 专家库 ----
-  setShowAgentPanel: (show: boolean) => void
-  setShowMemoryPanel: (show: boolean) => void
-  toggleExpert: (expertId: string) => void
-
-  // ---- 设计风格绑定 ----
-  setActiveStyleId: (id: string | null) => void
-
-  // ---- UI 组件选择 ----
-  toggleComponent: (id: string) => void
-  clearSelectedComponents: () => void
-
-  // ---- Token 统计 ----
-  setShowTokenStats: (show: boolean) => void
-
-  // ---- 项目折叠 ----
-  /** 各项目折叠状态（key=projectPath） */
-  collapsedProjects: Record<string, boolean>
-  /** 切换项目折叠/展开 */
-  toggleProjectCollapsed: (projectPath: string) => void
-  /** 在指定项目下新建会话 */
-  newConversationForProject: (projectPath: string, mode?: Mode) => string | null
-  /** 从列表中移除项目（删除该项目下所有会话，并从最近项目中剔除） */
-  removeProject: (projectPath: string) => void
-}
+// StoreState 统一由 ./types 定义，此处 re-export 保持向后兼容
+export type { StoreState, AgentTodo, CanvasItem, StreamingToolCall, ComponentMeta } from './types'
+import type { StoreState } from './types'
 
 function genId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
@@ -162,11 +29,14 @@ function makeTitle(text: string): string {
   return clean.length > 24 ? clean.slice(0, 24) + '…' : clean || '新对话'
 }
 
-export const useStore = create<StoreState>((set, get) => ({
-  // ---- Slice: Canvas / Browser / AgentTodo ----
-  ...createCanvasSlice(set, get),
-  ...createBrowserSlice(set, get),
-  ...createAgentTodoSlice(set, get),
+export const useStore = create<StoreState>()((...args) => {
+  const [set, get] = args
+  return {
+  // ---- Slices ----
+  ...createDesignSlice(...args),
+  ...createBrowserSlice(...args),
+  ...createSkillsSlice(...args),
+  ...createAgentSlice(...args),
 
   // ---- 核心状态 ----
   settings: null,
@@ -191,12 +61,6 @@ export const useStore = create<StoreState>((set, get) => ({
   projectPath: '',
   attachedFiles: [],
   pastedImagePaths: [],
-  showAgentPanel: false,
-  showMemoryPanel: false,
-  activeExperts: [],
-  activeStyleId: null,
-  selectedComponentIds: [],
-  showTokenStats: false,
   collapsedProjects: {},
 
   _persist: async () => {
@@ -684,23 +548,5 @@ export const useStore = create<StoreState>((set, get) => ({
     })
     void get()._persist()
   },
-
-  setShowAgentPanel: (show) => set({ showAgentPanel: show }),
-  setShowMemoryPanel: (show) => set({ showMemoryPanel: show }),
-  toggleExpert: (expertId) => set((s) => ({
-    activeExperts: s.activeExperts.includes(expertId)
-      ? s.activeExperts.filter(id => id !== expertId)
-      : [...s.activeExperts, expertId]
-  })),
-
-  setActiveStyleId: (id) => set({ activeStyleId: id }),
-
-  toggleComponent: (id) => set((s) => ({
-    selectedComponentIds: s.selectedComponentIds.includes(id)
-      ? s.selectedComponentIds.filter((c) => c !== id)
-      : [...s.selectedComponentIds, id]
-  })),
-  clearSelectedComponents: () => set({ selectedComponentIds: [] }),
-
-  setShowTokenStats: (show) => set({ showTokenStats: show })
-}))
+}
+})

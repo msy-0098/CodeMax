@@ -6,13 +6,17 @@ export type AgentSlice = Pick<StoreState,
   | 'showMemoryPanel'
   | 'activeExperts'
   | 'agentTodosByConv'
-  | 'taskListCollapsed'
+  | 'taskListCollapsedByConv'
   | 'showTokenStats'
+  | 'pendingDraft'
   | 'setShowAgentPanel'
   | 'setShowMemoryPanel'
   | 'toggleExpert'
   | 'toggleTaskListCollapsed'
   | 'restoreAgentTodos'
+  | 'markTodosComplete'
+  | 'editMessage'
+  | 'clearDraft'
   | 'setShowTokenStats'
 >
 
@@ -21,8 +25,9 @@ export const createAgentSlice: StateCreator<StoreState, [], [], AgentSlice> = (s
   showMemoryPanel: false,
   activeExperts: [],
   agentTodosByConv: {},
-  taskListCollapsed: false,
+  taskListCollapsedByConv: {},
   showTokenStats: false,
+  pendingDraft: null,
 
   setShowAgentPanel: (show) => set({ showAgentPanel: show }),
 
@@ -34,7 +39,16 @@ export const createAgentSlice: StateCreator<StoreState, [], [], AgentSlice> = (s
       : [...s.activeExperts, expertId]
   })),
 
-  toggleTaskListCollapsed: () => set((s) => ({ taskListCollapsed: !s.taskListCollapsed })),
+  toggleTaskListCollapsed: () => {
+    const convId = get().currentConversationId
+    if (!convId) return
+    set((s) => ({
+      taskListCollapsedByConv: {
+        ...s.taskListCollapsedByConv,
+        [convId]: !s.taskListCollapsedByConv[convId]
+      }
+    }))
+  },
 
   restoreAgentTodos: () => {
     const conv = get().getCurrentConversation()
@@ -46,8 +60,9 @@ export const createAgentSlice: StateCreator<StoreState, [], [], AgentSlice> = (s
       if (msg.role !== 'assistant' || !msg.toolResults) continue
       for (let j = msg.toolResults.length - 1; j >= 0; j--) {
         const result = msg.toolResults[j]
-        if (result.toolName === 'todo_write' && result.metadata?.todos) {
-          set((s) => ({ agentTodosByConv: { ...s.agentTodosByConv, [convId]: result.metadata.todos as AgentTodo[] } }))
+        const todos = result.metadata?.todos
+        if (result.toolName === 'todo_write' && todos) {
+          set((s) => ({ agentTodosByConv: { ...s.agentTodosByConv, [convId]: todos as AgentTodo[] } }))
           return
         }
       }
@@ -60,6 +75,46 @@ export const createAgentSlice: StateCreator<StoreState, [], [], AgentSlice> = (s
       return { agentTodosByConv: next }
     })
   },
+
+  markTodosComplete: () => {
+    const convId = get().currentConversationId
+    if (!convId) return
+    const todos = get().agentTodosByConv[convId]
+    if (!todos || todos.length === 0) return
+    // 只在有 in_progress 项时才更新，避免无意义的 setState
+    if (!todos.some((t) => t.status === 'in_progress')) return
+    set((s) => ({
+      agentTodosByConv: {
+        ...s.agentTodosByConv,
+        [convId]: s.agentTodosByConv[convId].map((t) =>
+          t.status === 'in_progress' ? { ...t, status: 'completed' as const } : t
+        )
+      }
+    }))
+  },
+
+  editMessage: (messageId) => {
+    const state = get()
+    const conv = state.getCurrentConversation()
+    if (!conv) return
+    const msgIndex = conv.messages.findIndex((m) => m.id === messageId)
+    if (msgIndex === -1) return
+    const msg = conv.messages[msgIndex]
+    if (msg.role !== 'user') return
+    const remaining = conv.messages.slice(0, msgIndex)
+    set((s) => ({
+      conversations: s.conversations.map((c) =>
+        c.id === conv.id
+          ? { ...c, messages: remaining, updatedAt: Date.now() }
+          : c
+      ),
+      pendingDraft: { text: msg.content, slashCommand: msg.slashCommand }
+    }))
+    get().restoreAgentTodos()
+    void get()._persist()
+  },
+
+  clearDraft: () => set({ pendingDraft: null }),
 
   setShowTokenStats: (show) => set({ showTokenStats: show }),
 })

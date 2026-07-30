@@ -6,7 +6,8 @@ import type {
   Skill,
   RecordingSession,
   CapturedRequest,
-  ImportedSkill
+  ImportedSkill,
+  StreamingSegment
 } from '../../../shared/types'
 
 /** UI 组件元数据 — 镜像 catalog 中的结构 */
@@ -65,6 +66,8 @@ export interface StoreState {
   isStreaming: boolean
   streamingContent: string
   streamingReasoning: string
+  /** 流式工作步骤（按时间顺序，每轮 Agent Loop 一个 segment） */
+  streamingSegments: StreamingSegment[]
   streamingConversationId: string | null
   streamingTokens: number | null
   /** 流式期间累积缓存命中 token */
@@ -82,8 +85,6 @@ export interface StoreState {
   networkSearchOn: boolean
   /** Auto Mode 等级：off（手动确认）、safe（仅读操作自动）、yolo（全部自动） */
   autoModeLevel: 'off' | 'safe' | 'yolo'
-  /** @deprecated 向后兼容 */
-  autoModeOn: boolean
   /** 当前工作目录/项目路径（从当前会话的 projectPath 派生） */
   projectPath: string
   /** 附加文件列表（文件路径） */
@@ -132,7 +133,7 @@ export interface StoreState {
 
   // ---- Agent 任务列表 ----
   agentTodosByConv: Record<string, AgentTodo[]>
-  taskListCollapsed: boolean
+  taskListCollapsedByConv: Record<string, boolean>
 
   // ---- 内部 ----
   _persist: () => Promise<void>
@@ -162,7 +163,6 @@ export interface StoreState {
   // ---- 辅助 ----
   getCurrentConversation: () => Conversation | null
   setNetworkSearchOn: (on: boolean) => void
-  setAutoModeOn: (on: boolean) => void
   setAutoModeLevel: (level: 'off' | 'safe' | 'yolo') => void
   setProjectPath: (path: string) => void
   addAttachedFile: (path: string) => void
@@ -214,6 +214,8 @@ export interface StoreState {
   // ---- Agent 任务列表 ----
   toggleTaskListCollapsed: () => void
   restoreAgentTodos: () => void
+  /** 流式结束后：将残留的 in_progress 标记为 completed，防止转圈不止 */
+  markTodosComplete: () => void
 
   // ---- 消息编辑 ----
   editMessage: (messageId: string) => void

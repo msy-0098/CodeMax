@@ -3,6 +3,13 @@
 import type { Mode, ModelId, ReasoningEffort } from './core'
 import type { ToolCall, ToolResult, ToolDefinition } from './tools'
 
+/** 流式输出的单个工作步骤（对应 Agent Loop 的一轮） */
+export interface StreamingSegment {
+  reasoning: string
+  content: string
+  toolCalls: { name: string; status: 'thinking' | 'calling' | 'done'; args?: string; result?: string; toolCallId?: string }[]
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant' | 'system'
@@ -17,7 +24,9 @@ export interface ChatMessage {
   toolCalls?: ToolCall[]
   /** 工具执行结果（针对 tool 角色的消息） */
   toolResults?: ToolResult[]
-  /** 斜杠命令元数据 — 用于在 UI 中显示胶囊而非完整提示词 */
+  /** 多轮工作步骤（按时间顺序展示思考链、正文和工具调用，仅多轮 Agent Loop 时存在） */
+  segments?: StreamingSegment[]
+  /** 斜杠命令元数据 — 用于在 UI 中显示胶囊而非完整提示词，systemHint 在 buildApiMessages 时拼接到 content 前面 */
   slashCommand?: { cmd: string; systemHint: string }
 }
 

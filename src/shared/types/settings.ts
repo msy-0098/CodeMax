@@ -126,4 +126,16 @@ export interface AppSettings {
   burstColorTheme?: 'rose' | 'ocean' | 'gold' | 'aurora'
   /** 自定义转场动画文件（JSON 字符串），当 burstTransitionStyle 为 'custom' 时使用 */
   customTransitionAnimation?: string
+
+  // ---- 视觉模型（Agnes 2.5 Flash）----
+  /** 视觉模型 API Key（Agent 的"眼睛"，用于图像理解） */
+  visionApiKey?: string
+  /** 视觉模型 Base URL */
+  visionBaseUrl?: string
+  /** 视觉模型名称 */
+  visionModel?: string
+
+  // ---- GPU 硬件加速 ----
+  /** GPU 硬件加速开关（优先调用独显，无独显则调用核显） */
+  gpuAcceleration?: boolean
 }

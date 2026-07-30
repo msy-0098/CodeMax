@@ -62,8 +62,11 @@ export async function agentLoop(
 
     round++
 
-    // 上下文窗口管理：超阈值时压缩旧 tool 结果
-    trimContext(messages)
+    // 上下文窗口管理：仅在首轮压缩旧 tool 结果
+    // 后续轮次不再压缩——修改已发送给 API 的消息会破坏 prompt 缓存前缀，导致缓存命中率骤降
+    if (round === 1) {
+      trimContext(messages)
+    }
 
     // 单次 API 调用
     const result = await callDeepSeekStream(
@@ -250,7 +253,7 @@ export async function agentLoop(
     role: 'user',
     content: '你已经完成了所有工具调用。请基于已有信息直接给出最终回答，不要再调用任何工具。'
   })
-  trimContext(messages)
+  // 不再调用 trimContext — 修改已有消息会破坏 prompt 缓存前缀
   const finalResult = await callDeepSeekStream(
     apiKey, baseUrl, request.model, messages, undefined,
     request.thinkingMode, request.reasoningEffort, request.temperature, request.maxTokens, handlers

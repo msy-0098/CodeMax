@@ -9,7 +9,7 @@ export type {
 } from './tools'
 
 export type {
-  ChatMessage, Conversation, ApiMessage, ChatRequest, StreamChunk
+  ChatMessage, Conversation, ApiMessage, ChatRequest, StreamChunk, StreamingSegment
 } from './messaging'
 
 export type { AppSettings } from './settings'
@@ -24,7 +24,7 @@ export type { CapturedRequest, RecordedEvent } from './network'
 
 export type {
   ModeConfig, QuickAction, ActionGroup, ConversationTemplate,
-  TestResult, FileTreeNode
+  TestResult, FileTreeNode, ComponentMeta, StyleEntry
 } from './ui'
 
 export type { ParticleVarRange, TransitionAnimationFile } from './transition'

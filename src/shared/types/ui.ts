@@ -49,6 +49,28 @@ export interface TestResult {
   model?: string
 }
 
+// ====== 设计模式公共类型 ======
+
+/** UI 组件元数据 — 镜像 catalog 中的结构 */
+export interface ComponentMeta {
+  id: string
+  name: string
+  nameCn: string
+  category: string
+  categoryCn: string
+  dependencies: string[]
+  props: string[]
+  files: { jsx: string; css: string | null; assets: string[] | null }
+}
+
+/** 设计风格条目 */
+export interface StyleEntry {
+  id: string
+  name: string
+  category: string
+  tokens: { accent: string; bg: string; fg: string; surface: string }
+}
+
 // ====== 文件树类型 ======
 
 /** 文件树节点（主进程与渲染进程共享） */
