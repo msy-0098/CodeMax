@@ -4,6 +4,10 @@
 >
 > 基于 Electron + React + TypeScript，内置完整工具系统、技能录制、MCP 协议支持。
 
+## 安装
+
+预构建安装包可直接从 [GitHub Releases](https://github.com/ximo888ok-netizen/ximo-Agent/releases) 下载 `XimoAgent Setup x.x.x.exe`，双击运行后按向导完成安装。
+
 ## 技术栈
 
 | 层 | 技术 |
