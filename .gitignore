@@ -1,0 +1,12 @@
+node_modules/
+out/
+release/
+dist/
+*.log
+*.tsbuildinfo
+tsc_web.txt*
+.DS_Store
+.vscode/
+.idea/
+.env
+.env.*
