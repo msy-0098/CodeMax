@@ -503,8 +503,9 @@ ipcMain.handle('update:download', async (event, downloadUrl: string) => {
 })
 
 ipcMain.handle('update:install', async (_event, filePath: string) => {
-  const { spawn } = await import('child_process')
-  spawn(filePath, [], { detached: true, stdio: 'ignore', windowsHide: false })
+  const { shell } = await import('electron')
+  const error = await shell.openPath(filePath)
+  if (error) throw new Error(error)
   return { success: true }
 })
 

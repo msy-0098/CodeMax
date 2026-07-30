@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Cpu, RefreshCw, Download, CheckCircle, AlertCircle, Zap } from 'lucide-react'
+import { Cpu, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react'
 import {
   SectionTitle,
   Divider,
@@ -8,7 +8,7 @@ import {
   LinkRow
 } from './shared-components'
 
-type UpdateState = 'idle' | 'checking' | 'up-to-date' | 'update-available' | 'downloading' | 'downloaded' | 'error'
+type UpdateState = 'idle' | 'checking' | 'up-to-date' | 'downloading' | 'downloaded' | 'error'
 
 function formatSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
@@ -27,6 +27,7 @@ export function AboutTab(): React.ReactElement {
   }>({})
   const [progress, setProgress] = useState({ downloaded: 0, total: 0 })
   const filePathRef = useRef<string>('')
+  const hasAutoStartedRef = useRef(false)
 
   // 注册下载进度事件监听器
   useEffect(() => {
@@ -43,8 +44,20 @@ export function AboutTab(): React.ReactElement {
     }
   }, [])
 
+  // 下载完成后自动安装
+  useEffect(() => {
+    if (updateState === 'downloaded' && !hasAutoStartedRef.current) {
+      hasAutoStartedRef.current = true
+      window.api.update.install(filePathRef.current).catch(() => {
+        setUpdateInfo((prev) => ({ ...prev, error: '无法启动安装程序，请手动运行下载的文件' }))
+        setUpdateState('error')
+      })
+    }
+  }, [updateState])
+
   const handleCheckUpdate = async (): Promise<void> => {
     setUpdateState('checking')
+    hasAutoStartedRef.current = false
     try {
       const result = await window.api.update.check()
       if (result.success) {
@@ -56,7 +69,8 @@ export function AboutTab(): React.ReactElement {
             fileName: result.fileName,
             fileSize: result.fileSize
           })
-          setUpdateState('update-available')
+          // 自动开始下载
+          startDownload(result.downloadUrl ?? '', result.fileSize ?? 0)
         } else {
           setUpdateInfo({ currentVersion: result.currentVersion })
           setUpdateState('up-to-date')
@@ -71,25 +85,20 @@ export function AboutTab(): React.ReactElement {
     }
   }
 
-  const handleDownload = async (): Promise<void> => {
-    if (!updateInfo.downloadUrl) return
+  const startDownload = async (downloadUrl: string, fileSize: number): Promise<void> => {
+    if (!downloadUrl) return
     setUpdateState('downloading')
-    setProgress({ downloaded: 0, total: updateInfo.fileSize ?? 0 })
+    setProgress({ downloaded: 0, total: fileSize })
     try {
-      const result = await window.api.update.download(updateInfo.downloadUrl)
+      const result = await window.api.update.download(downloadUrl)
       if (!result.success) {
         setUpdateInfo((prev) => ({ ...prev, error: result.error ?? '下载失败' }))
         setUpdateState('error')
       }
-      // downloadComplete 事件会在下载完成时将状态设为 'downloaded'
     } catch {
       setUpdateInfo((prev) => ({ ...prev, error: '下载失败，请检查网络连接' }))
       setUpdateState('error')
     }
-  }
-
-  const handleInstall = async (): Promise<void> => {
-    await window.api.update.install(filePathRef.current)
   }
 
   const progressPercent = progress.total > 0
@@ -129,62 +138,38 @@ export function AboutTab(): React.ReactElement {
           </div>
         )}
 
-        {updateState === 'update-available' && (
-          <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3">
-            <div className="flex items-center gap-2 mb-3">
-              <AlertCircle size={15} className="text-yellow-400" />
-              <span className="text-sm font-medium text-yellow-400">
-                发现新版本 v{updateInfo.latestVersion}（当前 v{updateInfo.currentVersion}）
-              </span>
-            </div>
-            <button
-              onClick={handleDownload}
-              className="inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90"
-            >
-              <Download size={13} />
-              下载 {updateInfo.fileName ?? '安装包'}
-              {updateInfo.fileSize ? ` (${formatSize(updateInfo.fileSize)})` : ''}
-            </button>
-          </div>
-        )}
-
         {updateState === 'downloading' && (
           <div className="rounded-lg border border-accent/30 bg-accent/10 px-4 py-3">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 mb-1.5">
+              <RefreshCw size={13} className="animate-spin text-accent" />
               <span className="text-sm font-medium text-accent">
-                <RefreshCw size={13} className="inline animate-spin mr-1.5" />
-                正在下载...
+                正在下载 v{updateInfo.latestVersion}...
               </span>
-              <span className="text-xs text-text-muted">{progressPercent}%</span>
             </div>
-            <div className="h-1.5 w-full rounded-full bg-bg-base overflow-hidden">
+            <div className="h-2 w-full rounded-full bg-bg-base overflow-hidden mb-1.5">
               <div
                 className="h-full rounded-full bg-accent transition-[width] duration-300 ease-out"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <p className="mt-2 text-xs text-text-muted">
-              已下载 {formatSize(progress.downloaded)}
-              {progress.total > 0 ? ` / ${formatSize(progress.total)}` : ''}
-            </p>
+            <div className="flex justify-between text-xs text-text-muted">
+              <span>{progressPercent}%</span>
+              <span>
+                {formatSize(progress.downloaded)}
+                {progress.total > 0 ? ` / ${formatSize(progress.total)}` : ''}
+              </span>
+            </div>
           </div>
         )}
 
         {updateState === 'downloaded' && (
           <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2">
               <CheckCircle size={15} className="text-green-400" />
               <span className="text-sm font-medium text-green-400">
-                下载完成，即将更新到 v{updateInfo.latestVersion}
+                下载完成，正在启动安装程序...
               </span>
             </div>
-            <button
-              onClick={handleInstall}
-              className="inline-flex items-center gap-1.5 rounded-md bg-green-500 px-4 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90"
-            >
-              <Zap size={13} />
-              立即安装
-            </button>
           </div>
         )}
 
