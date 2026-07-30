@@ -126,6 +126,15 @@ export default function App(): React.ReactElement {
     void init().then(() => setLoaded(true))
   }, [init])
 
+  // 窗口最大化状态 — 最大化时移除圆角（全屏不应有圆角）
+  useEffect(() => {
+    const applyMaximized = (maximized: boolean): void => {
+      document.documentElement.classList.toggle('window-maximized', maximized)
+    }
+    void window.api.window.isMaximized().then(applyMaximized)
+    return window.api.window.onMaximizeChange(applyMaximized)
+  }, [])
+
   // 窗口显示：等 init 完成且启动动画/主界面渲染到 DOM 后再通知主进程 show
   // 确保 show 时表面已有首帧内容，避免 DWM 渲染纯黑画面
   useEffect(() => {

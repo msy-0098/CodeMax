@@ -113,8 +113,17 @@ webview {
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
     letter-spacing: -0.011em;
-    /* 不透明背景 — 透明窗口会导致 webview 黑屏，改用主题底色 */
-    background: var(--bg-base);
+    /* 透明窗口 — body 背景必须透明，让桌面透过圆角可见 */
+    background: transparent;
+  }
+
+  /* 真圆角窗口 — #root 裁剪内容为圆角，最大化时移除 */
+  #root {
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .window-maximized #root {
+    border-radius: 0;
   }
 
   ::selection {

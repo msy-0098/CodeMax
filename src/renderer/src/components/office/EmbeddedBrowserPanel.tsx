@@ -112,7 +112,7 @@ const BrowserTab = memo(function BrowserTab({
   useEffect(() => {
     const wv = webviewRef.current
     if (wv) {
-      wv.style.display = active ? 'inline-flex' : 'none'
+      wv.style.display = active ? 'flex' : 'none'
     }
   }, [active])
 
@@ -128,7 +128,7 @@ const BrowserTab = memo(function BrowserTab({
     wv.setAttribute('allowpopups', '')
     wv.style.width = '100%'
     wv.style.height = '100%'
-    wv.style.display = active ? 'inline-flex' : 'none'
+    wv.style.display = active ? 'flex' : 'none'
     container.appendChild(wv)
     webviewRef.current = wv
     registerWebview(tab.id, wv)
@@ -281,9 +281,10 @@ export function EmbeddedBrowserPanel(): React.ReactElement {
   useEffect(() => { activeTabIdRef.current = activeTabId }, [activeTabId])
 
   // 通知主进程内嵌浏览器已激活
+  // 使用 .catch() 防止 handler 未注册时 unhandled rejection 阻塞渲染
   useEffect(() => {
-    void window.api.embeddedBrowser.setActive(true)
-    return () => { void window.api.embeddedBrowser.setActive(false) }
+    window.api.embeddedBrowser.setActive(true).catch(() => {})
+    return () => { window.api.embeddedBrowser.setActive(false).catch(() => {}) }
   }, [])
 
   // 当活动标签的 webview 变化时更新 readyRef

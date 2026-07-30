@@ -162,7 +162,8 @@ function BrowserPanelContainer(): React.ReactElement {
   }, [isDragging])
 
   return (
-    <>
+    /* absolute 定位相对于主体内容区（App.tsx 中 relative 容器），不会覆盖标题栏 */
+    <div className="absolute inset-y-0 right-0 z-30 flex h-full" style={{ userSelect: isDragging ? 'none' : undefined }}>
       {/* 拖拽手柄 */}
       <div
         onMouseDown={handleMouseDown}
@@ -171,7 +172,7 @@ function BrowserPanelContainer(): React.ReactElement {
         <div className="absolute inset-y-0 -left-1 -right-1" />
       </div>
       <aside className="flex h-full min-h-0 flex-col border-l border-border-subtle bg-bg-base" style={{ width: `${width}px`, flexShrink: 0 }}>
-        <Suspense fallback={null}>
+        <Suspense fallback={<div className="flex h-full items-center justify-center"><div className="h-6 w-6 animate-spin rounded-full border-2 border-accent/20 border-t-accent" /></div>}>
           <EmbeddedBrowserPanel />
         </Suspense>
       </aside>
@@ -182,7 +183,7 @@ function BrowserPanelContainer(): React.ReactElement {
           style={{ userSelect: 'none' }}
         />
       )}
-    </>
+    </div>
   )
 }
 

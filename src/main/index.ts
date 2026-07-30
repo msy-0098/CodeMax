@@ -10,6 +10,9 @@ import { getCheckpointStore, removeCheckpointStore } from './CheckpointStore'
 import { registerChatHandlers } from './ipc/chat-handler'
 import { registerFsHandlers } from './ipc/fs-handlers'
 import { registerNetworkHandlers } from './ipc/network-handlers'
+// 内嵌浏览器 IPC 桥 — 模块加载时注册 handler，必须在启动时导入，
+// 否则用户打开内置浏览器时 'embedded-browser:set-active' 尚未注册导致报错
+import './tools/Browser/WebviewBridge'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
@@ -56,7 +59,7 @@ function createWindow(): void {
     show: false,
     frame: false,
     autoHideMenuBar: true,
-    backgroundColor: '#090b10',
+    transparent: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,
@@ -70,8 +73,7 @@ function createWindow(): void {
   })
 
   // 窗口由 window:ready IPC 触发显示（渲染进程首帧完成后通知）
-  // backgroundColor + paintWhenInitiallyHidden 确保 DWM 在 show 时已有深色内容，
-  // 不会出现黑窗闪烁
+  // paintWhenInitiallyHidden 确保 DWM 在 show 时已有内容，不会出现黑窗闪烁
 
   // 安全兜底：5 秒后若渲染进程仍未通知，强制显示（防止 JS 异常导致永久白屏）
   const showFallback = setTimeout(() => {
