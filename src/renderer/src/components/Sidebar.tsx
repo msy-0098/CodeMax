@@ -316,7 +316,7 @@ const ConversationItem = memo(function ConversationItem({
   contextMenuId,
   onContextMenu
 }: {
-  conv: { id: string; title: string; mode: string; projectPath?: string }
+  conv: { id: string; title: string; mode: string; projectPath?: string; contextTokens?: number }
   activeId: string | null
   onSelect: (id: string) => void
   onDelete: (id: string) => void
@@ -325,6 +325,15 @@ const ConversationItem = memo(function ConversationItem({
   onContextMenu: (id: string | null) => void
 }): React.ReactElement {
   const isActive = conv.id === activeId
+
+  // 上下文窗口占用指示器
+  const CONTEXT_WINDOW = 1_000_000
+  const ctxTokens = conv.contextTokens ?? 0
+  const ctxPct = ctxTokens > 0 ? (ctxTokens / CONTEXT_WINDOW) * 100 : 0
+  const ctxColor = ctxPct >= 80 ? '#ef4444'
+    : ctxPct >= 60 ? '#f97316'
+    : ctxPct >= 30 ? '#f59e0b'
+    : '#22c55e'
 
   return (
     <div className="relative">
@@ -346,6 +355,17 @@ const ConversationItem = memo(function ConversationItem({
           conv.mode === 'coding' ? 'bg-emerald-400' : 'bg-purple-400'
         } ${isActive ? 'shadow-glow animate-pulse-dot' : ''}`} />
         <span className="truncate flex-1">{conv.title}</span>
+        {ctxTokens > 0 && (
+          <span
+            className="shrink-0 h-1 w-8 rounded-full bg-border overflow-hidden inline-flex"
+            title={`上下文占用 ${ctxPct.toFixed(1)}% (${ctxTokens.toLocaleString()} / ${CONTEXT_WINDOW.toLocaleString()})`}
+          >
+            <span
+              className="h-full rounded-full transition-all duration-300"
+              style={{ width: `${Math.min(ctxPct, 100)}%`, backgroundColor: ctxColor }}
+            />
+          </span>
+        )}
         <button
           onClick={(e) => {
             e.stopPropagation()

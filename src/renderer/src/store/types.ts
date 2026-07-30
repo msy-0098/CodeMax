@@ -74,6 +74,8 @@ export interface StoreState {
   streamingCacheHitTokens: number | null
   /** 流式期间累积 prompt token */
   streamingPromptTokens: number | null
+  /** 流式期间最近一次 API 调用的 total tokens（prompt+completion）— 即当前上下文窗口占用 */
+  streamingContextTokens: number | null
   /** 当前正在执行的工具调用列表 */
   streamingToolCalls: StreamingToolCall[]
   /** 流式回复中 assistant 占位消息的 ID（预插入 conversations，流式期间原地更新） */

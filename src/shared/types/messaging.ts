@@ -45,6 +45,8 @@ export interface Conversation {
   promptTokens?: number
   /** 会话累计缓存命中 token */
   cacheHitTokens?: number
+  /** 最近一次 API 调用的 total tokens（prompt+completion）— 即当前上下文窗口占用 */
+  contextTokens?: number
 }
 
 export interface ApiMessage {

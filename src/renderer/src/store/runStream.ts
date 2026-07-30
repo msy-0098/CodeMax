@@ -19,6 +19,7 @@ export const STREAMING_RESET: Partial<StoreState> = {
   streamingTokens: null,
   streamingCacheHitTokens: null,
   streamingPromptTokens: null,
+  streamingContextTokens: null,
   streamingToolCalls: []
 }
 
@@ -31,7 +32,8 @@ export function buildPersistPatch(
   conversationId: string,
   msgPatch: Partial<ChatMessage>,
   convTokens: { total: number; prompt: number; cacheHit: number } | null,
-  error?: string
+  error?: string,
+  contextTokens?: number
 ): Partial<StoreState> {
   const assistantId = s.streamingAssistantId
   return {
@@ -47,6 +49,7 @@ export function buildPersistPatch(
               promptTokens: (c.promptTokens ?? 0) + convTokens.prompt,
               cacheHitTokens: (c.cacheHitTokens ?? 0) + convTokens.cacheHit
             } : {}),
+            ...(contextTokens !== undefined ? { contextTokens } : {}),
             updatedAt: Date.now()
           }
         : c
@@ -105,6 +108,8 @@ export async function runStream(
   let totalTokensAccum = 0
   let promptTokensAccum = 0
   let cacheHitTokensAccum = 0
+  // 最近一次 API 调用的 total tokens（prompt+completion）— 即当前上下文窗口占用
+  let lastContextTokens = 0
 
   // 收集本轮流式期间发生的所有工具调用和结果，用于持久化到会话
   const collectedToolCalls: ToolCall[] = []
@@ -191,7 +196,8 @@ export async function runStream(
         totalTokensAccum += chunk.usage.totalTokens
         promptTokensAccum += chunk.usage.promptTokens
         cacheHitTokensAccum += chunk.usage.promptCacheHitTokens ?? 0
-        set({ streamingTokens: totalTokensAccum, streamingCacheHitTokens: cacheHitTokensAccum, streamingPromptTokens: promptTokensAccum })
+        lastContextTokens = chunk.usage.totalTokens
+        set({ streamingTokens: totalTokensAccum, streamingCacheHitTokens: cacheHitTokensAccum, streamingPromptTokens: promptTokensAccum, streamingContextTokens: lastContextTokens })
       }
 
       // ── 工具调用状态：操作当前 segment 的 toolCalls ──
@@ -291,7 +297,7 @@ export async function runStream(
               segments: persistSegments,
               tokens: hasTokenData ? totalTokensAccum : undefined,
               cacheHitTokens: cacheHitTokensAccum > 0 ? cacheHitTokensAccum : undefined
-            }, hasTokenData ? { total: totalTokensAccum, prompt: promptTokensAccum, cacheHit: cacheHitTokensAccum } : null, chunk.error))
+            }, hasTokenData ? { total: totalTokensAccum, prompt: promptTokensAccum, cacheHit: cacheHitTokensAccum } : null, chunk.error, lastContextTokens || undefined))
             void get()._persist()
           } else {
             set({ error: chunk.error, ...STREAMING_RESET })
@@ -310,7 +316,7 @@ export async function runStream(
           cacheHitTokens: cacheHitTokensAccum || undefined,
           toolCalls: hasToolData ? collectedToolCalls : undefined,
           toolResults: hasToolData ? collectedToolResults : undefined
-        }, { total: totalTokensAccum, prompt: promptTokensAccum, cacheHit: cacheHitTokensAccum }))
+        }, { total: totalTokensAccum, prompt: promptTokensAccum, cacheHit: cacheHitTokensAccum }, undefined, lastContextTokens || undefined))
         void get()._persist()
       }
     })
@@ -331,7 +337,7 @@ export async function runStream(
         segments: persistSegments,
         tokens: hasTokenData ? totalTokensAccum : undefined,
         cacheHitTokens: cacheHitTokensAccum > 0 ? cacheHitTokensAccum : undefined
-      }, hasTokenData ? { total: totalTokensAccum, prompt: promptTokensAccum, cacheHit: cacheHitTokensAccum } : null, `发送失败：${msg}`))
+      }, hasTokenData ? { total: totalTokensAccum, prompt: promptTokensAccum, cacheHit: cacheHitTokensAccum } : null, `发送失败：${msg}`, lastContextTokens || undefined))
       void get()._persist()
     } else {
       set({ error: `发送失败：${msg}`, ...STREAMING_RESET })
@@ -357,7 +363,7 @@ export async function runStream(
           cacheHitTokens: cacheHitTokensAccum || undefined,
           toolCalls: hasToolData ? collectedToolCalls : undefined,
           toolResults: hasToolData ? collectedToolResults : undefined
-        }, { total: totalTokensAccum, prompt: promptTokensAccum, cacheHit: cacheHitTokensAccum }))
+        }, { total: totalTokensAccum, prompt: promptTokensAccum, cacheHit: cacheHitTokensAccum }, undefined, lastContextTokens || undefined))
         void get()._persist()
       } else {
         set(STREAMING_RESET)

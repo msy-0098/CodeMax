@@ -52,6 +52,7 @@ export const useStore = create<StoreState>()((...args) => {
   streamingTokens: null,
   streamingCacheHitTokens: null,
   streamingPromptTokens: null,
+  streamingContextTokens: null,
   streamingToolCalls: [],
   streamingAssistantId: null,
   showSettings: false,
@@ -315,6 +316,7 @@ export const useStore = create<StoreState>()((...args) => {
       streamingTokens: null,
       streamingCacheHitTokens: null,
       streamingPromptTokens: null,
+      streamingContextTokens: null,
       error: null
     }))
 
@@ -354,6 +356,7 @@ export const useStore = create<StoreState>()((...args) => {
       streamingTokens: null,
       streamingCacheHitTokens: null,
       streamingPromptTokens: null,
+      streamingContextTokens: null,
       error: null
     }))
 
@@ -367,6 +370,7 @@ export const useStore = create<StoreState>()((...args) => {
     const accumTotal = state.streamingTokens ?? 0
     const accumCacheHit = state.streamingCacheHitTokens ?? 0
     const accumPrompt = state.streamingPromptTokens ?? 0
+    const streamContext = state.streamingContextTokens ?? 0
     const hasTokenData = accumTotal > 0
     // 计算持久化 segments（仅多轮时保留）
     const segs = state.streamingSegments
@@ -385,7 +389,7 @@ export const useStore = create<StoreState>()((...args) => {
         model: state.settings?.model,
         tokens: hasTokenData ? accumTotal : undefined,
         cacheHitTokens: accumCacheHit > 0 ? accumCacheHit : undefined
-      }, hasTokenData ? { total: accumTotal, prompt: accumPrompt, cacheHit: accumCacheHit } : null))
+      }, hasTokenData ? { total: accumTotal, prompt: accumPrompt, cacheHit: accumCacheHit } : null, undefined, streamContext || undefined))
       void state._persist()
       return
     }

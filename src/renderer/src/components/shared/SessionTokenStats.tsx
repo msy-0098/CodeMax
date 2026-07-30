@@ -1,6 +1,9 @@
-import { Activity, Database, TrendingUp, MessagesSquare } from 'lucide-react'
+import { Activity, Database, TrendingUp, MessagesSquare, Gauge } from 'lucide-react'
 import { useStore } from '../../store/useStore'
 import type { Conversation } from '../../../../shared/types'
+
+/** DeepSeek-V4 系列上下文窗口大小（1M tokens） */
+const CONTEXT_WINDOW = 1_000_000
 
 interface Props {
   conversation: Conversation | null
@@ -19,6 +22,7 @@ export function SessionTokenStats({ conversation }: Props): React.ReactElement {
   const streamingTokens = useStore((s) => s.streamingTokens)
   const streamingCacheHit = useStore((s) => s.streamingCacheHitTokens)
   const streamingPrompt = useStore((s) => s.streamingPromptTokens)
+  const streamingContext = useStore((s) => s.streamingContextTokens)
 
   const isThisStreaming = isStreaming && streamingConvId === conversation?.id
 
@@ -37,6 +41,16 @@ export function SessionTokenStats({ conversation }: Props): React.ReactElement {
     ? convPrompt + (streamingPrompt ?? 0)
     : convPrompt
 
+  // 上下文窗口占用 — 流式期间优先使用最新值
+  const contextTokens = isThisStreaming
+    ? (streamingContext ?? conversation?.contextTokens ?? 0)
+    : (conversation?.contextTokens ?? 0)
+  const contextPct = contextTokens > 0 ? (contextTokens / CONTEXT_WINDOW) * 100 : 0
+  const contextColor = contextPct >= 80 ? '#ef4444'
+    : contextPct >= 60 ? '#f97316'
+    : contextPct >= 30 ? '#f59e0b'
+    : '#22c55e'
+
   const hitRate = promptTokens > 0 ? (cacheHitTokens / promptTokens) * 100 : 0
 
   // 对话轮数 = 用户消息数（每轮以一次用户提问计）
@@ -44,6 +58,25 @@ export function SessionTokenStats({ conversation }: Props): React.ReactElement {
 
   return (
     <div className="flex items-center justify-end gap-2.5 px-1 pt-1 text-[11px] shrink-0">
+      {/* 上下文窗口占用 */}
+      {contextTokens > 0 && (
+        <>
+          <div className="flex items-center gap-1.5" title={`上下文窗口占用：${contextTokens.toLocaleString()} / ${CONTEXT_WINDOW.toLocaleString()} tokens (${contextPct.toFixed(1)}%)`}>
+            <Gauge size={11} className="text-text-muted" />
+            <span className="text-text-muted">上下文</span>
+            <div className="relative h-1.5 w-16 rounded-full bg-border overflow-hidden">
+              <div
+                className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
+                style={{ width: `${Math.min(contextPct, 100)}%`, backgroundColor: contextColor }}
+              />
+            </div>
+            <span className="font-mono" style={{ color: contextColor }}>
+              {contextPct.toFixed(1)}%
+            </span>
+          </div>
+          <span className="text-text-muted/20">|</span>
+        </>
+      )}
       {/* 对话轮数 */}
       <div className="flex items-center gap-1">
         <MessagesSquare size={11} className="text-text-muted" />
