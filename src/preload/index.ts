@@ -199,6 +199,18 @@ const api = {
     load: (mode: Mode): Promise<string> => ipcRenderer.invoke('memory:load', mode),
     save: (mode: Mode, content: string): Promise<boolean> => ipcRenderer.invoke('memory:save', mode, content)
   },
+  // 检查更新 — 查询 GitHub Releases 最新版本
+  update: {
+    check: (): Promise<{
+      success: boolean
+      currentVersion?: string
+      latestVersion?: string
+      hasUpdate?: boolean
+      downloadUrl?: string
+      releaseUrl?: string
+      error?: string
+    }> => ipcRenderer.invoke('update:check')
+  },
   // DeepSeek V4 分词器 — 本地 token 计数（与 API 口径一致）
   tokenizer: {
     count: (text: string): Promise<{ success: boolean; count: number; error?: string }> =>

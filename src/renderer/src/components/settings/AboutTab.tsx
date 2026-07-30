@@ -1,4 +1,5 @@
-import { Cpu } from 'lucide-react'
+import { useState } from 'react'
+import { Cpu, RefreshCw, Download, CheckCircle, AlertCircle } from 'lucide-react'
 import {
   SectionTitle,
   Divider,
@@ -7,7 +8,43 @@ import {
   LinkRow
 } from './shared-components'
 
+type UpdateState = 'idle' | 'checking' | 'up-to-date' | 'update-available' | 'error'
+
 export function AboutTab(): React.ReactElement {
+  const [updateState, setUpdateState] = useState<UpdateState>('idle')
+  const [updateInfo, setUpdateInfo] = useState<{
+    currentVersion?: string
+    latestVersion?: string
+    downloadUrl?: string
+    error?: string
+  }>({})
+
+  const handleCheckUpdate = async (): Promise<void> => {
+    setUpdateState('checking')
+    try {
+      const result = await window.api.update.check()
+      if (result.success) {
+        if (result.hasUpdate) {
+          setUpdateInfo({
+            currentVersion: result.currentVersion,
+            latestVersion: result.latestVersion,
+            downloadUrl: result.downloadUrl
+          })
+          setUpdateState('update-available')
+        } else {
+          setUpdateInfo({ currentVersion: result.currentVersion })
+          setUpdateState('up-to-date')
+        }
+      } else {
+        setUpdateInfo({ error: result.error })
+        setUpdateState('error')
+      }
+    } catch {
+      setUpdateInfo({ error: '检查更新失败，请检查网络连接' })
+      setUpdateState('error')
+    }
+  }
+
   return (
     <div className="space-y-5">
       {/* 应用信息 */}
@@ -22,7 +59,54 @@ export function AboutTab(): React.ReactElement {
         </div>
       </div>
 
-      {/* DeepSeek-V4 模型信息 */}
+      {/* 检查更新 */}
+      <SectionTitle title="版本更新" desc="检查 GitHub Releases 是否有新版本" />
+      <div className="space-y-3">
+        <button
+          onClick={handleCheckUpdate}
+          disabled={updateState === 'checking'}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-bg-elevated px-4 py-2.5 text-sm font-medium text-text-primary transition-colors hover:border-accent hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <RefreshCw size={15} className={updateState === 'checking' ? 'animate-spin' : ''} />
+          {updateState === 'checking' ? '正在检查...' : '检查更新'}
+        </button>
+
+        {updateState === 'up-to-date' && (
+          <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2.5 text-sm text-green-400">
+            <CheckCircle size={15} />
+            已是最新版本 v{updateInfo.currentVersion}
+          </div>
+        )}
+
+        {updateState === 'update-available' && (
+          <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertCircle size={15} className="text-yellow-400" />
+              <span className="text-sm font-medium text-yellow-400">
+                发现新版本 v{updateInfo.latestVersion}（当前 v{updateInfo.currentVersion}）
+              </span>
+            </div>
+            <a
+              href={updateInfo.downloadUrl ?? '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
+            >
+              <Download size={13} />
+              前往下载
+            </a>
+          </div>
+        )}
+
+        {updateState === 'error' && (
+          <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-400">
+            <AlertCircle size={15} />
+            {updateInfo.error ?? '检查更新失败'}
+          </div>
+        )}
+      </div>
+
+      <Divider />
       <SectionTitle title="DeepSeek-V4 模型" desc="由深度求索于 2026 年 4 月发布的新一代旗舰大模型" />
 
       <div className="grid grid-cols-2 gap-2.5">

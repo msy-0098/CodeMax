@@ -402,6 +402,38 @@ ipcMain.handle('tokenizer:countMessages', async (_event, messages: { role: strin
   }
 })
 
+// ---------- 检查更新 ----------
+ipcMain.handle('update:check', async () => {
+  try {
+    const { readFileSync } = await import('fs')
+    const { join } = await import('path')
+    const pkgPath = join(app.getAppPath(), 'package.json')
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'))
+    const currentVersion: string = pkg.version
+    const repo = 'ximo888ok-netizen/ximo-Agent'
+    const res = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, {
+      headers: { 'User-Agent': 'ximo-agent' }
+    })
+    if (!res.ok) {
+      return { success: false, error: `GitHub API 返回 ${res.status}` }
+    }
+    const release = await res.json() as { tag_name: string; html_url: string; assets?: Array<{ browser_download_url: string }> }
+    const latestTag = release.tag_name.replace(/^v/, '')
+    const hasUpdate = latestTag !== currentVersion
+    const downloadUrl = release.assets?.[0]?.browser_download_url ?? release.html_url
+    return {
+      success: true,
+      currentVersion,
+      latestVersion: latestTag,
+      hasUpdate,
+      downloadUrl,
+      releaseUrl: release.html_url
+    }
+  } catch (e) {
+    return { success: false, error: (e as Error).message }
+  }
+})
+
 // ---------- 注册拆分到独立文件的 IPC 处理器 ----------
 registerChatHandlers()
 registerFsHandlers()
