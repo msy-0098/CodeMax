@@ -207,9 +207,25 @@ const api = {
       latestVersion?: string
       hasUpdate?: boolean
       downloadUrl?: string
+      fileName?: string
+      fileSize?: number
       releaseUrl?: string
       error?: string
-    }> => ipcRenderer.invoke('update:check')
+    }> => ipcRenderer.invoke('update:check'),
+    download: (downloadUrl: string): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+      ipcRenderer.invoke('update:download', downloadUrl),
+    install: (filePath: string): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('update:install', filePath),
+    onProgress: (callback: (data: { downloaded: number; total: number }) => void): (() => void) => {
+      const handler = (_event: unknown, data: { downloaded: number; total: number }): void => callback(data)
+      ipcRenderer.on('update:downloadProgress', handler as never)
+      return () => ipcRenderer.removeListener('update:downloadProgress', handler as never)
+    },
+    onDownloadComplete: (callback: (data: { filePath: string }) => void): (() => void) => {
+      const handler = (_event: unknown, data: { filePath: string }): void => callback(data)
+      ipcRenderer.on('update:downloadComplete', handler as never)
+      return () => ipcRenderer.removeListener('update:downloadComplete', handler as never)
+    }
   },
   // DeepSeek V4 分词器 — 本地 token 计数（与 API 口径一致）
   tokenizer: {

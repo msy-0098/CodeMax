@@ -417,21 +417,93 @@ ipcMain.handle('update:check', async () => {
     if (!res.ok) {
       return { success: false, error: `GitHub API 返回 ${res.status}` }
     }
-    const release = await res.json() as { tag_name: string; html_url: string; assets?: Array<{ browser_download_url: string }> }
+    const release = await res.json() as { tag_name: string; html_url: string; assets?: Array<{ browser_download_url: string; name: string; size: number }> }
     const latestTag = release.tag_name.replace(/^v/, '')
     const hasUpdate = latestTag !== currentVersion
-    const downloadUrl = release.assets?.[0]?.browser_download_url ?? release.html_url
+    const asset = release.assets?.[0]
     return {
       success: true,
       currentVersion,
       latestVersion: latestTag,
       hasUpdate,
-      downloadUrl,
+      downloadUrl: asset?.browser_download_url ?? release.html_url,
+      fileName: asset?.name ?? `ximo-Agent-Setup-${latestTag}.exe`,
+      fileSize: asset?.size ?? 0,
       releaseUrl: release.html_url
     }
   } catch (e) {
     return { success: false, error: (e as Error).message }
   }
+})
+
+ipcMain.handle('update:download', async (event, downloadUrl: string) => {
+  const { createWriteStream, unlink, existsSync } = await import('fs')
+  const { join } = await import('path')
+  const https = await import('https')
+  const http = await import('http')
+  const { app: electronApp } = await import('electron')
+  const downloadDir = join(electronApp.getPath('temp'), 'ximo-agent-update')
+  const { mkdir } = await import('fs/promises')
+  await mkdir(downloadDir, { recursive: true })
+  const fileName = 'XimoAgent-Setup.exe'
+  const filePath = join(downloadDir, fileName)
+
+  // 清理旧下载文件
+  if (existsSync(filePath)) {
+    unlink(filePath, () => {})
+  }
+
+  return new Promise((resolve, reject) => {
+    const proto = downloadUrl.startsWith('https') ? https : http
+    proto.get(downloadUrl, (res) => {
+      // 处理重定向
+      if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        const redirectUrl = res.headers.location
+        res.resume()
+        // 简化：递归处理一次重定向
+        proto.get(redirectUrl, (redirectRes) => {
+          doDownload(redirectRes)
+        }).on('error', reject)
+        return
+      }
+      doDownload(res)
+    }).on('error', reject)
+
+    function doDownload(res: import('http').IncomingMessage): void {
+      const totalSize = parseInt(res.headers['content-length'] ?? '0', 10) || 0
+      let downloaded = 0
+      const file = createWriteStream(filePath)
+
+      res.on('data', (chunk: Buffer) => {
+        downloaded += chunk.length
+        file.write(chunk)
+        if (totalSize > 0 && !event.sender.isDestroyed()) {
+          event.sender.send('update:downloadProgress', { downloaded, total: totalSize })
+        }
+      })
+
+      res.on('end', () => {
+        file.end()
+        if (!event.sender.isDestroyed()) {
+          event.sender.send('update:downloadProgress', { downloaded: totalSize || downloaded, total: totalSize || downloaded })
+          event.sender.send('update:downloadComplete', { filePath })
+        }
+        resolve({ success: true, filePath })
+      })
+
+      res.on('error', (err) => {
+        file.close()
+        unlink(filePath, () => {})
+        reject(err)
+      })
+    }
+  })
+})
+
+ipcMain.handle('update:install', async (_event, filePath: string) => {
+  const { spawn } = await import('child_process')
+  spawn(filePath, [], { detached: true, stdio: 'ignore', windowsHide: false })
+  return { success: true }
 })
 
 // ---------- 注册拆分到独立文件的 IPC 处理器 ----------
