@@ -13,7 +13,8 @@ import {
   RotateCcw,
   Layers,
   Gauge,
-  Type
+  Type,
+  Brain
 } from 'lucide-react'
 import { ensureAgentsLoaded, getAgentById, searchAgents, ALL_AGENTS } from '@renderer/agents'
 import type { AppSettings, ModelId, ReasoningEffort } from '../../../../shared/types'
@@ -426,6 +427,16 @@ export function AgentTab({
           onToggle={() => update({ checkpointEnabled: !(local.checkpointEnabled ?? true) })}
           activeText="已开启 · 支持代码回退"
           inactiveText="已关闭 · 无法回退代码"
+        />
+
+        <ToggleRow
+          icon={<Brain size={15} />}
+          label="长期记忆"
+          desc="每个模式独立的跨会话记忆，Agent 自主记录用户习惯、踩过的坑、工具语法，每次对话自动注入"
+          active={local.memoryEnabled ?? true}
+          onToggle={() => update({ memoryEnabled: !(local.memoryEnabled ?? true) })}
+          activeText="已开启 · Agent 跨会话学习"
+          inactiveText="已关闭 · 无持久记忆"
         />
       </CollapsibleSection>
     </div>

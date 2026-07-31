@@ -1,5 +1,6 @@
 import type { ToolCall } from '../../shared/types'
 import type { SingleCallResult } from './types'
+import { truncateToolResult as _truncate, type AgentConfig } from '../../shared/context-compress'
 
 // ---------- 常量 ----------
 
@@ -35,13 +36,9 @@ export function collectToolCalls(acc: Map<number, { id: string; name: string; ar
   })
 }
 
-/** 截断超长工具结果，防爆上下文 */
+/** 截断超长工具结果，防爆上下文 — 委托给 shared/context-compress 保持逻辑一致 */
 export function truncateToolResult(content: string): string {
-  if (!content || content.length <= agentConfig.maxToolResultChars) return content
-  const truncated = content.slice(0, agentConfig.maxToolResultChars)
-  return `${truncated}
-
-[...结果已截断，原始长度 ${content.length} 字符。如需完整内容请重新调用工具并指定更小范围]`
+  return _truncate(content, agentConfig as AgentConfig)
 }
 
 /**
@@ -64,54 +61,4 @@ export function sanitizeContent(text: string): string {
     .replace(/[\uD800-\uDFFF]/g, '\uFFFD')
 }
 
-/** 计算消息列表总字符数 */
-export function totalChars(messages: { content?: string }[]): number {
-  return messages.reduce((sum, m) => sum + (m.content?.length ?? 0), 0)
-}
 
-/**
- * 三级上下文压缩 — 参考 Reasonix 的 snip/prune/summary 设计
- *
- * 1. SNIP（软阈值 60%）：旧 tool 结果截断为摘要 + 前N字符
- * 2. PRUNE（硬阈值 80%）：进一步缩短旧 tool 结果为最小占位符
- * 3. 不做 summary 压缩（需要额外 LLM 调用，暂不实现，靠 snip+prune 足够）
- */
-export function trimContext(messages: { role: string; content: string; tool_calls?: unknown; tool_call_id?: string }[]): void {
-  const snipThreshold = agentConfig.maxContextChars * 0.6
-  const pruneThreshold = agentConfig.maxContextChars * 0.8
-  const total = totalChars(messages)
-  if (total <= snipThreshold) return
-
-  const protectFrom = Math.max(1, messages.length - agentConfig.recentKeep)
-
-  // 第一级：SNIP — 旧 tool 结果截断
-  if (total > snipThreshold) {
-    for (let i = 1; i < protectFrom; i++) {
-      const m = messages[i]
-      if (m.role === 'tool' && m.content && m.content.length > agentConfig.snippedKeep + 100) {
-        m.content = m.content.slice(0, agentConfig.snippedKeep) + '\n[...已自动截断以节省上下文空间]'
-      }
-    }
-  }
-
-  // 第二级：PRUNE — 如果 snip 后仍超阈值，进一步缩短
-  if (totalChars(messages) > pruneThreshold) {
-    for (let i = 1; i < protectFrom; i++) {
-      const m = messages[i]
-      if (m.role === 'tool' && m.content && m.content.length > agentConfig.prunedKeep) {
-        m.content = m.content.slice(0, agentConfig.prunedKeep) + '\n[...已省略]'
-      }
-    }
-  }
-
-  // 第三级：如果仍超阈值，截断旧的 assistant 内容（保留 tool_calls 结构）
-  if (totalChars(messages) > agentConfig.maxContextChars) {
-    for (let i = 1; i < protectFrom; i++) {
-      const m = messages[i]
-      if (m.role === 'assistant' && m.content && m.content.length > 500 && !m.tool_calls) {
-        m.content = m.content.slice(0, 200) + '\n[...已省略]'
-      }
-      if (totalChars(messages) <= agentConfig.maxContextChars) break
-    }
-  }
-}

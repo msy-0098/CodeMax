@@ -18,6 +18,7 @@ export const STREAMING_RESET: Partial<StoreState> = {
   streamingAssistantId: null,
   streamingTokens: null,
   streamingCacheHitTokens: null,
+  streamingCacheMissTokens: null,
   streamingPromptTokens: null,
   streamingContextTokens: null,
   streamingToolCalls: []
@@ -31,7 +32,7 @@ export function buildPersistPatch(
   s: StoreState,
   conversationId: string,
   msgPatch: Partial<ChatMessage>,
-  convTokens: { total: number; prompt: number; cacheHit: number } | null,
+  convTokens: { total: number; prompt: number; cacheHit: number; cacheMiss?: number } | null,
   error?: string,
   contextTokens?: number
 ): Partial<StoreState> {
@@ -47,9 +48,10 @@ export function buildPersistPatch(
             ...(convTokens ? {
               totalTokens: (c.totalTokens ?? 0) + convTokens.total,
               promptTokens: (c.promptTokens ?? 0) + convTokens.prompt,
-              cacheHitTokens: (c.cacheHitTokens ?? 0) + convTokens.cacheHit
+              cacheHitTokens: (c.cacheHitTokens ?? 0) + convTokens.cacheHit,
+              cacheMissTokens: (c.cacheMissTokens ?? 0) + (convTokens.cacheMiss ?? 0)
             } : {}),
-            ...(contextTokens !== undefined ? { contextTokens } : {}),
+            ...(contextTokens !== undefined ? { contextTokens: (c.contextTokens ?? 0) + contextTokens } : {}),
             updatedAt: Date.now()
           }
         : c
@@ -84,7 +86,9 @@ export async function runStream(
       recentKeep: settings.contextRecentKeep ?? 5,
       snippedKeep: settings.contextSnippedKeep ?? 200,
       prunedKeep: settings.contextPrunedKeep ?? 80
-    }
+    },
+    settings.reasoningEffort,
+    settings.memoryEnabled
   )
   const request = {
     mode: conversation.mode,
@@ -108,8 +112,10 @@ export async function runStream(
   let totalTokensAccum = 0
   let promptTokensAccum = 0
   let cacheHitTokensAccum = 0
-  // 最近一次 API 调用的 total tokens（prompt+completion）— 即当前上下文窗口占用
-  let lastContextTokens = 0
+  // D1 会话累计缓存未命中 — 不随压缩重置
+  let cacheMissTokensAccum = 0
+  // 上下文窗口 token 累计 — 每轮 API 调用的 total_tokens 累加，持久化时叠加到会话已有值
+  let contextTokensAccum = 0
 
   // 收集本轮流式期间发生的所有工具调用和结果，用于持久化到会话
   const collectedToolCalls: ToolCall[] = []
@@ -196,8 +202,9 @@ export async function runStream(
         totalTokensAccum += chunk.usage.totalTokens
         promptTokensAccum += chunk.usage.promptTokens
         cacheHitTokensAccum += chunk.usage.promptCacheHitTokens ?? 0
-        lastContextTokens = chunk.usage.totalTokens
-        set({ streamingTokens: totalTokensAccum, streamingCacheHitTokens: cacheHitTokensAccum, streamingPromptTokens: promptTokensAccum, streamingContextTokens: lastContextTokens })
+        cacheMissTokensAccum += chunk.usage.promptCacheMissTokens ?? 0
+        contextTokensAccum += chunk.usage.totalTokens
+        set({ streamingTokens: totalTokensAccum, streamingCacheHitTokens: cacheHitTokensAccum, streamingCacheMissTokens: cacheMissTokensAccum, streamingPromptTokens: promptTokensAccum, streamingContextTokens: contextTokensAccum })
       }
 
       // ── 工具调用状态：操作当前 segment 的 toolCalls ──
@@ -264,6 +271,39 @@ export async function runStream(
         scheduleStreamingUpdate()
       }
 
+      // ── 监督审查反馈（ultra 思考强度专用）──
+      if (chunk.supervision) {
+        const sup = chunk.supervision
+        const verdictLabel: Record<string, string> = {
+          on_track: '✅ 正常',
+          lazy: '⚠️ 偷懒',
+          off_track: '⚠️ 跑偏',
+          violation: '🚫 违规'
+        }
+        const formattedLines = [
+          `第 ${sup.round} 轮审查：${verdictLabel[sup.verdict] ?? sup.verdict}`,
+          `严重程度：${sup.severity}`
+        ]
+        if (sup.issues.length > 0) {
+          formattedLines.push(`问题：\n${sup.issues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}`)
+        }
+        if (sup.correction) {
+          formattedLines.push(`纠正指令：${sup.correction}`)
+        }
+        const formattedResult = formattedLines.join('\n')
+        const supId = `supervision-${sup.round}`
+        collectedToolCalls.push({ id: supId, name: '监督审查', arguments: { round: sup.round, verdict: sup.verdict, severity: sup.severity } })
+        collectedToolResults.push({ toolCallId: supId, toolName: '监督审查', content: formattedResult, success: sup.verdict === 'on_track' })
+        currentSeg().toolCalls.push({
+          name: '监督审查',
+          status: 'done' as const,
+          args: JSON.stringify({ round: sup.round, verdict: sup.verdict, severity: sup.severity }),
+          result: formattedResult,
+          toolCallId: supId
+        })
+        scheduleStreamingUpdate()
+      }
+
       // ── 轮次边界：toolStatus='thinking' 表示一轮结束，下一轮即将开始 ──
       if (chunk.toolStatus === 'thinking') {
         // 将当前 segment 中所有 calling 的工具标记为 done
@@ -297,7 +337,7 @@ export async function runStream(
               segments: persistSegments,
               tokens: hasTokenData ? totalTokensAccum : undefined,
               cacheHitTokens: cacheHitTokensAccum > 0 ? cacheHitTokensAccum : undefined
-            }, hasTokenData ? { total: totalTokensAccum, prompt: promptTokensAccum, cacheHit: cacheHitTokensAccum } : null, chunk.error, lastContextTokens || undefined))
+            }, hasTokenData ? { total: totalTokensAccum, prompt: promptTokensAccum, cacheHit: cacheHitTokensAccum, cacheMiss: cacheMissTokensAccum } : null, chunk.error, contextTokensAccum || undefined))
             void get()._persist()
           } else {
             set({ error: chunk.error, ...STREAMING_RESET })
@@ -316,7 +356,7 @@ export async function runStream(
           cacheHitTokens: cacheHitTokensAccum || undefined,
           toolCalls: hasToolData ? collectedToolCalls : undefined,
           toolResults: hasToolData ? collectedToolResults : undefined
-        }, { total: totalTokensAccum, prompt: promptTokensAccum, cacheHit: cacheHitTokensAccum }, undefined, lastContextTokens || undefined))
+        }, { total: totalTokensAccum, prompt: promptTokensAccum, cacheHit: cacheHitTokensAccum, cacheMiss: cacheMissTokensAccum }, undefined, contextTokensAccum || undefined))
         void get()._persist()
       }
     })
@@ -337,7 +377,7 @@ export async function runStream(
         segments: persistSegments,
         tokens: hasTokenData ? totalTokensAccum : undefined,
         cacheHitTokens: cacheHitTokensAccum > 0 ? cacheHitTokensAccum : undefined
-      }, hasTokenData ? { total: totalTokensAccum, prompt: promptTokensAccum, cacheHit: cacheHitTokensAccum } : null, `发送失败：${msg}`, lastContextTokens || undefined))
+      }, hasTokenData ? { total: totalTokensAccum, prompt: promptTokensAccum, cacheHit: cacheHitTokensAccum, cacheMiss: cacheMissTokensAccum } : null, `发送失败：${msg}`, contextTokensAccum || undefined))
       void get()._persist()
     } else {
       set({ error: `发送失败：${msg}`, ...STREAMING_RESET })
@@ -363,7 +403,7 @@ export async function runStream(
           cacheHitTokens: cacheHitTokensAccum || undefined,
           toolCalls: hasToolData ? collectedToolCalls : undefined,
           toolResults: hasToolData ? collectedToolResults : undefined
-        }, { total: totalTokensAccum, prompt: promptTokensAccum, cacheHit: cacheHitTokensAccum }, undefined, lastContextTokens || undefined))
+        }, { total: totalTokensAccum, prompt: promptTokensAccum, cacheHit: cacheHitTokensAccum, cacheMiss: cacheMissTokensAccum }, undefined, contextTokensAccum || undefined))
         void get()._persist()
       } else {
         set(STREAMING_RESET)

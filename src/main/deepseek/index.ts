@@ -3,7 +3,9 @@
 // 保持对外 API 完全兼容
 
 export { configureAgentLoop } from './context'
-export { callDeepSeekStream, streamChat, testConnection } from './api'
+export { callDeepSeekStream, streamChat, testConnection, toApiEffort } from './api'
 export { agentLoop } from './agent-loop'
+export { runSupervisionCheck, needsCorrection, buildCorrectionMessage } from './supervisor'
+export type { SupervisionResult, AgentRoundSnapshot } from './supervisor'
 export { countTokens, countMessageTokens, isTokenizerReady } from './tokenizer'
 export type { StreamHandlers, SingleCallResult } from './types'

@@ -58,7 +58,7 @@ export class SearchUiTool implements Tool {
       }
 
       // 在 outline 中搜索匹配的元素
-      const matches = searchInOutline(outline, { text, role, capability })
+      const matches = searchInOutline(outline as Record<string, unknown>, { text, role, capability })
 
       if (matches.length === 0) {
         return {

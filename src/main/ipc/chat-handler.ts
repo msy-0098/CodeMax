@@ -4,6 +4,7 @@ import type { ChatRequest, StreamChunk, ToolContext, ApiMessage } from '../../sh
 import { loadSettings } from '../store'
 import { toolRegistry } from '../tools'
 import { modeToolNames, ensureModeToolsLoaded } from '../tools/lazy-registry'
+import { normalizeToolSchemas } from '../../shared/cache'
 import * as os from 'os'
 
 // 当前流式请求的 AbortController（用于取消）
@@ -103,6 +104,11 @@ export function registerChatHandlers(): void {
       }
     }
 
+    // 长期记忆关闭时，从工具列表中移除 memory_update — Agent 完全感知不到记忆功能
+    if (settings.memoryEnabled === false) {
+      toolNames = toolNames.filter((n) => n !== 'memory_update')
+    }
+
     const modeTools = toolNames.length > 0 ? toolRegistry.getByNames(toolNames).map((t) => t.definition) : undefined
 
     // 连接所有启用的 MCP 服务器，收集其工具
@@ -124,6 +130,9 @@ export function registerChatHandlers(): void {
 
     // 合并模式工具 + MCP 工具
     const allTools = [...(modeTools || []), ...mcpToolDefs]
+
+    // A4 工具 schema 字典序归一化排序 — 保持 tools JSON 字节稳定，避免破坏缓存前缀
+    const sortedTools = allTools.length > 0 ? normalizeToolSchemas(allTools) : allTools
 
     // 注入运行环境信息 — 插入到 system prompt 之后、对话历史之前，作为稳定前缀的一部分
     // 环境信息使用日期（不含秒级时间戳），确保同一会话内前缀稳定，缓存命中率最大化
@@ -166,7 +175,7 @@ export function registerChatHandlers(): void {
           mode: request.mode,
           requestUserInput: handlers.requestUserInput
         }
-        await agentLoop(settings.apiKey, settings.baseUrl, { ...request, messages: messagesWithEnv, tools: allTools }, handlers, toolContext, request.sessionId)
+        await agentLoop(settings.apiKey, settings.baseUrl, { ...request, messages: messagesWithEnv, tools: sortedTools }, handlers, toolContext, request.sessionId)
       } else {
         await streamChat(settings.apiKey, settings.baseUrl, { ...request, messages: messagesWithEnv }, handlers)
       }
@@ -197,31 +206,34 @@ export function registerChatHandlers(): void {
  * 仅包含日期（不含时分秒），确保同一会话内前缀稳定，不破坏 prompt 缓存。
  * Agent 如需精确时间可用 terminal_exec 执行 date 命令。
  */
-function buildEnvInfo(): string {
-  const now = new Date()
-  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+// 缓存静态部分 — OS/Shell/CPU/内存等在同一进程内不变，避免每次请求重复调用 os API
+const _envStatic = (() => {
   const isWin = process.platform === 'win32'
   const isMac = process.platform === 'darwin'
   const platformName = isWin ? 'Windows' : isMac ? 'macOS' : 'Linux'
   const shellName = isWin ? 'PowerShell' : isMac ? 'zsh' : 'bash'
-
-  const pad = (n: number): string => String(n).padStart(2, '0')
-  const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-  const weekdays = ['日', '一', '二', '三', '四', '五', '六']
-  const weekday = weekdays[now.getDay()]
-
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
   const lines: string[] = [
-    `⏰ 当前日期：${dateStr} 星期${weekday} (${tz})`,
     `💻 操作系统：${platformName} ${process.arch}`,
     `🔧 终端 Shell：${shellName}${isWin ? '（PowerShell 语法，如 $env:PATH）' : '（Bash 语法）'}`,
     `📦 Node.js：${process.version}`,
     `👤 用户：${os.userInfo().username}@${os.hostname()}`,
     `🧠 CPU 核心：${os.cpus().length}　💾 内存：${Math.round(os.totalmem() / 1024 / 1024 / 1024)}GB`,
   ]
-
   const pathHint = isWin
     ? 'Windows 路径用反斜杠 \\(如 C:\\Users\\xxx)'
     : 'Unix 路径用正斜杠 /(如 /home/xxx)'
+  return { tz, isWin, lines, pathHint }
+})()
 
-  return `--- 运行环境 ---\n${lines.join('\n')}\n\n⚠️ 请基于以上信息使用正确的命令语法和路径格式（${pathHint}）。联网搜索时，上述日期即为"今天"，搜索最新信息时无需再询问用户当前日期。如需精确时间可用 terminal_exec 执行 date 命令。`
+function buildEnvInfo(): string {
+  const now = new Date()
+  const pad = (n: number): string => String(n).padStart(2, '0')
+  const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+  const weekdays = ['日', '一', '二', '三', '四', '五', '六']
+  const weekday = weekdays[now.getDay()]
+
+  const dateLine = `⏰ 当前日期：${dateStr} 星期${weekday} (${_envStatic.tz})`
+  return `--- 运行环境 ---\n${dateLine}\n${_envStatic.lines.join('\n')}\n\n⚠️ 请基于以上信息使用正确的命令语法和路径格式（${_envStatic.pathHint}）。联网搜索时，上述日期即为"今天"，搜索最新信息时无需再询问用户当前日期。如需精确时间可用 terminal_exec 执行 date 命令。`
 }

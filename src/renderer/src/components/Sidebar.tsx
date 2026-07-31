@@ -16,6 +16,7 @@ export function Sidebar(): React.ReactElement {
   const setShowSettings = useStore((s) => s.setShowSettings)
   const setShowTokenStats = useStore((s) => s.setShowTokenStats)
   const openProject = useStore((s) => s.openProject)
+  const memoryEnabled = useStore((s) => s.settings?.memoryEnabled ?? true)
   const collapsedProjects = useStore((s) => s.collapsedProjects)
   const toggleProjectCollapsed = useStore((s) => s.toggleProjectCollapsed)
   const newConversationForProject = useStore((s) => s.newConversationForProject)
@@ -88,13 +89,15 @@ export function Sidebar(): React.ReactElement {
         >
           <Users size={14} />
         </button>
-        <button
-          onClick={handleMemory}
-          className="btn-ghost flex items-center justify-center rounded-xl px-2 py-2 text-xs"
-          title="记忆"
-        >
-          <Brain size={14} />
-        </button>
+        {memoryEnabled && (
+          <button
+            onClick={handleMemory}
+            className="btn-ghost flex items-center justify-center rounded-xl px-2 py-2 text-xs"
+            title="记忆"
+          >
+            <Brain size={14} />
+          </button>
+        )}
       </div>
 
       {/* 列表标题 */}

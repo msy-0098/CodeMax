@@ -45,7 +45,7 @@ export class RrwebRecorder {
     await page.evaluate(() => {
       // @ts-ignore rrweb 通过 UMD bundle 注入后挂在 window.rrweb 上
       const stopFn = rrweb.record({
-        emit(event) {
+        emit(event: unknown) {
           // @ts-ignore 暴露的全局函数
           window.__rrwebEmit(event)
         }
@@ -104,7 +104,7 @@ export class RrwebRecorder {
       await page.evaluate(() => {
         // @ts-ignore
         const stopFn = rrweb.record({
-          emit(event) {
+          emit(event: unknown) {
             // @ts-ignore
             window.__rrwebEmit(event)
           }

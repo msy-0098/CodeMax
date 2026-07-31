@@ -7,7 +7,7 @@ export interface AppSettings {
   baseUrl: string
   model: ModelId
   thinkingMode: boolean
-  /** 思考强度：off=关闭思考, high=高, max=最高 */
+  /** 思考强度：off=关闭思考, high=高, max=最高, ultra=终极（工程范式+监督审查） */
   reasoningEffort: ReasoningEffort
   temperature: number
   maxTokens: number
@@ -90,6 +90,8 @@ export interface AppSettings {
   defaultNetworkSearchOn?: boolean
   /** 检查点自动快照开关 */
   checkpointEnabled?: boolean
+  /** 长期记忆开关 — 关闭后 Agent 感知不到 memory_update 工具，记忆也不会注入系统提示词 */
+  memoryEnabled?: boolean
 
   // ---- 桌面操控 ----
   /** pi-computer-use Helper 命令超时（秒） */

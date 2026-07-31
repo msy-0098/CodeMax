@@ -72,9 +72,11 @@ export interface StoreState {
   streamingTokens: number | null
   /** 流式期间累积缓存命中 token */
   streamingCacheHitTokens: number | null
+  /** D1 流式期间累积缓存未命中 token — 不随压缩重置 */
+  streamingCacheMissTokens: number | null
   /** 流式期间累积 prompt token */
   streamingPromptTokens: number | null
-  /** 流式期间最近一次 API 调用的 total tokens（prompt+completion）— 即当前上下文窗口占用 */
+  /** 流式期间上下文 token 累计 — 每轮 API 调用的 total_tokens 累加值 */
   streamingContextTokens: number | null
   /** 当前正在执行的工具调用列表 */
   streamingToolCalls: StreamingToolCall[]

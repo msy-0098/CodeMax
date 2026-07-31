@@ -88,6 +88,6 @@ export async function executeWebviewCommand(
     }, COMMAND_TIMEOUT)
 
     pendingCommands.set(id, { resolve, reject, timer })
-    win.send('webview:command', { id, cmd, args })
+    win.webContents.send('webview:command', { id, cmd, args })
   })
 }

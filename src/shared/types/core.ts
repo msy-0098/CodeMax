@@ -4,7 +4,7 @@ export type Mode = 'office' | 'coding' | 'design'
 
 export type ModelId = 'deepseek-v4-pro' | 'deepseek-v4-flash'
 
-/** 思考强度：off=关闭, high=高, max=最高 */
-export type ReasoningEffort = 'off' | 'high' | 'max'
+/** 思考强度：off=关闭, high=高, max=最高, ultra=终极（工程范式+监督Agent） */
+export type ReasoningEffort = 'off' | 'high' | 'max' | 'ultra'
 
 export type FontSize = 'sm' | 'md' | 'lg'

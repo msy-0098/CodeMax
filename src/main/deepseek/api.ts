@@ -1,30 +1,44 @@
-import type { ChatRequest, StreamChunk, TestResult, ToolDefinition } from '../../shared/types'
+import type { ChatRequest, StreamChunk, TestResult, ToolDefinition, ReasoningEffort } from '../../shared/types'
 import { errorResult, collectToolCalls, sanitizeContent } from './context'
 import type { StreamHandlers, SingleCallResult } from './types'
+import { normaliseUsage, normalizeToolSchemas } from '../../shared/cache'
+import type { NormalizedUsage } from '../../shared/cache'
 
-// ---------- 底层：单次流式 API 调用 ----------
+// ---------- 常量 ----------
+
+/** 流式连接断开最大重试次数 — 重放便宜是因为 prompt cache 命中 */
+const MAX_STREAM_RECONNECTS = 3
 
 /**
- * 调用 DeepSeek Chat Completions API（流式，支持 tools）
- * 返回完整结果，同时通过 onChunk 实时推送内容增量
+ * 将应用层 ReasoningEffort 映射为 DeepSeek API 支持的 reasoning_effort 值。
+ * 'ultra' 是应用层自定义等级（工程范式 + 监督审查），API 层等价于 'max'。
  */
-export async function callDeepSeekStream(
+export function toApiEffort(effort: ReasoningEffort): 'off' | 'high' | 'max' {
+  return effort === 'ultra' ? 'max' : effort
+}
+
+// ---------- 底层：单次流式 API 调用（不含重试） ----------
+
+/**
+ * callDeepSeekStreamOnce — 单次流式请求，不含重试逻辑
+ *
+ * emitted 标志：任何 reasoning/text/tool_call chunk 已发出则为 true。
+ * 中断时由上层 callDeepSeekStream 决定是否重放。
+ */
+async function callDeepSeekStreamOnce(
   apiKey: string,
   baseUrl: string,
   model: string,
-  messages: { role: string; content: string; tool_calls?: unknown; tool_call_id?: string }[],
+  messages: { role: string; content: string; tool_calls?: unknown; tool_call_id?: string; reasoning_content?: string }[],
   tools: ToolDefinition[] | undefined,
   thinkingMode: boolean,
-  reasoningEffort: 'off' | 'high' | 'max',
+  reasoningEffort: ReasoningEffort,
   temperature: number,
   maxTokens: number,
-  handlers: StreamHandlers
+  handlers: StreamHandlers,
+  emittedRef: { value: boolean }
 ): Promise<SingleCallResult> {
   const { onChunk, signal } = handlers
-
-  if (!apiKey) {
-    return errorResult('未配置 API Key。')
-  }
 
   const url = `${baseUrl.replace(/\/$/, '')}/chat/completions`
 
@@ -42,8 +56,10 @@ export async function callDeepSeekStream(
     stream_options: { include_usage: true }
   }
 
+  // A4 工具 schema 字典序归一化排序 — 保持 tools JSON 字节稳定，避免破坏缓存前缀
   if (tools && tools.length > 0) {
-    body.tools = tools.map((t) => ({
+    const sortedTools = normalizeToolSchemas(tools)
+    body.tools = sortedTools.map((t) => ({
       type: 'function',
       function: {
         name: t.name,
@@ -58,9 +74,7 @@ export async function callDeepSeekStream(
     body.temperature = temperature
   } else {
     body.enable_thinking = true
-    // reasoning_effort 控制：high=高, max=最高
-    // 根据用户需求，采用 OpenAI 格式 reasoning_effort 参数
-    body.reasoning_effort = reasoningEffort
+    body.reasoning_effort = toApiEffort(reasoningEffort)
   }
 
   let response: Response
@@ -75,8 +89,11 @@ export async function callDeepSeekStream(
       signal
     })
   } catch (e) {
+    if ((e as Error).name === 'AbortError') {
+      return { finishReason: 'stop', content: '', reasoningContent: '', toolCalls: [], emitted: false }
+    }
     const msg = e instanceof Error ? e.message : String(e)
-    return errorResult(`网络请求失败：${msg}`)
+    return { finishReason: 'error', content: '', reasoningContent: '', toolCalls: [], error: `网络请求失败：${msg}`, emitted: false }
   }
 
   if (!response.ok) {
@@ -86,11 +103,11 @@ export async function callDeepSeekStream(
       const errJson = JSON.parse(errText)
       errText = errJson?.error?.message || errText
     } catch { /* keep raw */ }
-    return errorResult(`API 请求失败 (${response.status})：${errText || response.statusText}`)
+    return { finishReason: 'error', content: '', reasoningContent: '', toolCalls: [], error: `API 请求失败 (${response.status})：${errText || response.statusText}`, emitted: false }
   }
 
   if (!response.body) {
-    return errorResult('API 返回了空响应体。')
+    return { finishReason: 'error', content: '', reasoningContent: '', toolCalls: [], error: 'API 返回了空响应体。', emitted: false }
   }
 
   const reader = response.body.getReader()
@@ -101,6 +118,7 @@ export async function callDeepSeekStream(
   let content = ''
   let reasoningContent = ''
   const toolCallsAcc = new Map<number, { id: string; name: string; arguments: string }>()
+  let normalizedUsage: NormalizedUsage | undefined
 
   try {
     while (true) {
@@ -119,13 +137,11 @@ export async function callDeepSeekStream(
 
         const data = line.slice(5).trim()
         if (data === '[DONE]') {
-          // 流结束
           const tcArray = collectToolCalls(toolCallsAcc)
-
           if (tcArray.length > 0) {
-            return { finishReason: 'tool_calls', content, reasoningContent, toolCalls: tcArray }
+            return { finishReason: 'tool_calls', content, reasoningContent, toolCalls: tcArray, usage: normalizedUsage, emitted: emittedRef.value }
           }
-          return { finishReason: 'stop', content, reasoningContent, toolCalls: [] }
+          return { finishReason: 'stop', content, reasoningContent, toolCalls: [], usage: normalizedUsage, emitted: emittedRef.value }
         }
 
         try {
@@ -136,16 +152,19 @@ export async function callDeepSeekStream(
           // 文本内容
           if (delta?.content) {
             content += delta.content
+            emittedRef.value = true
             onChunk({ content: delta.content })
           }
           // 思考链
           if (delta?.reasoning_content) {
             reasoningContent += delta.reasoning_content
+            emittedRef.value = true
             onChunk({ reasoningContent: delta.reasoning_content })
           }
 
           // 工具调用增量（流式累积）
           if (delta?.tool_calls) {
+            emittedRef.value = true
             for (const tc of delta.tool_calls) {
               const idx = tc.index ?? 0
               if (!toolCallsAcc.has(idx)) {
@@ -158,15 +177,16 @@ export async function callDeepSeekStream(
             }
           }
 
-          // usage — 解析缓存命中 token
+          // usage — D3 normaliseUsage 双形态归一化
           if (json.usage) {
-            const cachedTokens = json.usage.prompt_tokens_details?.cached_tokens ?? 0
+            normalizedUsage = normaliseUsage(json.usage)
             onChunk({
               usage: {
-                promptTokens: json.usage.prompt_tokens ?? 0,
-                completionTokens: json.usage.completion_tokens ?? 0,
-                totalTokens: json.usage.total_tokens ?? 0,
-                promptCacheHitTokens: cachedTokens
+                promptTokens: normalizedUsage.promptTokens,
+                completionTokens: normalizedUsage.completionTokens,
+                totalTokens: normalizedUsage.totalTokens,
+                promptCacheHitTokens: normalizedUsage.cacheHitTokens,
+                promptCacheMissTokens: normalizedUsage.cacheMissTokens
               }
             })
           }
@@ -174,18 +194,16 @@ export async function callDeepSeekStream(
           // finish_reason
           if (choice?.finish_reason) {
             const fr = choice.finish_reason
-
-            // 收集最终的 tool_calls
             const tcArray = collectToolCalls(toolCallsAcc)
 
             if (fr === 'tool_calls' || tcArray.length > 0) {
-              return { finishReason: 'tool_calls', content, reasoningContent, toolCalls: tcArray }
+              return { finishReason: 'tool_calls', content, reasoningContent, toolCalls: tcArray, usage: normalizedUsage, emitted: emittedRef.value }
             }
             if (fr === 'stop') {
-              return { finishReason: 'stop', content, reasoningContent, toolCalls: [] }
+              return { finishReason: 'stop', content, reasoningContent, toolCalls: [], usage: normalizedUsage, emitted: emittedRef.value }
             }
             if (fr === 'length') {
-              return { finishReason: 'length', content, reasoningContent, toolCalls: [] }
+              return { finishReason: 'length', content, reasoningContent, toolCalls: [], usage: normalizedUsage, emitted: emittedRef.value }
             }
           }
         } catch {
@@ -196,16 +214,83 @@ export async function callDeepSeekStream(
     // 流自然结束（无 finish_reason）
     const tcArray = collectToolCalls(toolCallsAcc)
     if (tcArray.length > 0) {
-      return { finishReason: 'tool_calls', content, reasoningContent, toolCalls: tcArray }
+      return { finishReason: 'tool_calls', content, reasoningContent, toolCalls: tcArray, usage: normalizedUsage, emitted: emittedRef.value }
     }
-    return { finishReason: 'stop', content, reasoningContent, toolCalls: [] }
+    return { finishReason: 'stop', content, reasoningContent, toolCalls: [], usage: normalizedUsage, emitted: emittedRef.value }
   } catch (e) {
     if ((e as Error).name === 'AbortError') {
-      return { finishReason: 'stop', content, reasoningContent, toolCalls: [] }
+      return { finishReason: 'stop', content, reasoningContent, toolCalls: [], usage: normalizedUsage, emitted: emittedRef.value }
     }
     const msg = e instanceof Error ? e.message : String(e)
-    return { finishReason: 'error', content, reasoningContent, toolCalls: [], error: `流式读取中断：${msg}` }
+    return { finishReason: 'error', content, reasoningContent, toolCalls: [], usage: normalizedUsage, error: `流式读取中断：${msg}`, emitted: emittedRef.value }
   }
+}
+
+// ---------- 公开接口：带 emitted 标志 + 零输出重放的流式调用 ----------
+
+/**
+ * callDeepSeekStream — C1 emitted 标志 + 零输出重放
+ *
+ * 参考 Reasonix 的 streamWithReconnect：
+ * - 维护 emitted 标志：任何 reasoning/text/tool_call chunk 已发出则为 true
+ * - 连接断开时：emitted=false → 重放整个请求（≤ MAX_STREAM_RECONNECTS 次）
+ * - 连接断开时：emitted=true → 上报错误，不重放（避免重复输出）
+ * - 重放便宜是因为 prompt cache 命中
+ */
+export async function callDeepSeekStream(
+  apiKey: string,
+  baseUrl: string,
+  model: string,
+  messages: { role: string; content: string; tool_calls?: unknown; tool_call_id?: string; reasoning_content?: string }[],
+  tools: ToolDefinition[] | undefined,
+  thinkingMode: boolean,
+  reasoningEffort: ReasoningEffort,
+  temperature: number,
+  maxTokens: number,
+  handlers: StreamHandlers
+): Promise<SingleCallResult> {
+  if (!apiKey) {
+    return errorResult('未配置 API Key。')
+  }
+
+  for (let attempt = 0; attempt <= MAX_STREAM_RECONNECTS; attempt++) {
+    const emittedRef = { value: false }
+    const result = await callDeepSeekStreamOnce(
+      apiKey, baseUrl, model, messages, tools,
+      thinkingMode, reasoningEffort, temperature, maxTokens,
+      handlers, emittedRef
+    )
+
+    // 成功或非连接错误 → 直接返回
+    if (result.finishReason !== 'error') return result
+    if (!isConnResetError(result.error)) return result
+
+    // 已有部分输出 → 不重放，避免重复
+    if (emittedRef.value) {
+      return { ...result, error: `流式传输中断（已有部分输出，不重放）：${result.error}` }
+    }
+
+    // 零输出 + 连接断开 → 重放（最后一次也返回错误）
+    if (attempt >= MAX_STREAM_RECONNECTS) {
+      return { ...result, error: `流式连接断开，已重试 ${MAX_STREAM_RECONNECTS} 次仍失败：${result.error}` }
+    }
+    // 继续重试
+  }
+
+  return errorResult('重试次数已用尽')
+}
+
+/** 判断错误是否为连接断开（可重放） */
+function isConnResetError(error?: string): boolean {
+  if (!error) return false
+  const lower = error.toLowerCase()
+  return lower.includes('network') ||
+    lower.includes('连接') ||
+    lower.includes('中断') ||
+    lower.includes('reset') ||
+    lower.includes('econnreset') ||
+    lower.includes('fetch') ||
+    lower.includes('aborted')
 }
 
 // ---------- 兼容旧接口：无工具调用的简单流式（向后兼容）----------

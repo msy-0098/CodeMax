@@ -51,6 +51,7 @@ export const useStore = create<StoreState>()((...args) => {
   streamingConversationId: null,
   streamingTokens: null,
   streamingCacheHitTokens: null,
+  streamingCacheMissTokens: null,
   streamingPromptTokens: null,
   streamingContextTokens: null,
   streamingToolCalls: [],
@@ -315,6 +316,7 @@ export const useStore = create<StoreState>()((...args) => {
       streamingAssistantId: assistantMsgId,
       streamingTokens: null,
       streamingCacheHitTokens: null,
+      streamingCacheMissTokens: null,
       streamingPromptTokens: null,
       streamingContextTokens: null,
       error: null
@@ -355,6 +357,7 @@ export const useStore = create<StoreState>()((...args) => {
       streamingAssistantId: assistantMsgId,
       streamingTokens: null,
       streamingCacheHitTokens: null,
+      streamingCacheMissTokens: null,
       streamingPromptTokens: null,
       streamingContextTokens: null,
       error: null
@@ -369,6 +372,7 @@ export const useStore = create<StoreState>()((...args) => {
     const { streamingConversationId: convId, streamingContent, streamingAssistantId } = state
     const accumTotal = state.streamingTokens ?? 0
     const accumCacheHit = state.streamingCacheHitTokens ?? 0
+    const accumCacheMiss = state.streamingCacheMissTokens ?? 0
     const accumPrompt = state.streamingPromptTokens ?? 0
     const streamContext = state.streamingContextTokens ?? 0
     const hasTokenData = accumTotal > 0
@@ -389,7 +393,7 @@ export const useStore = create<StoreState>()((...args) => {
         model: state.settings?.model,
         tokens: hasTokenData ? accumTotal : undefined,
         cacheHitTokens: accumCacheHit > 0 ? accumCacheHit : undefined
-      }, hasTokenData ? { total: accumTotal, prompt: accumPrompt, cacheHit: accumCacheHit } : null, undefined, streamContext || undefined))
+      }, hasTokenData ? { total: accumTotal, prompt: accumPrompt, cacheHit: accumCacheHit, cacheMiss: accumCacheMiss } : null, undefined, streamContext || undefined))
       void state._persist()
       return
     }

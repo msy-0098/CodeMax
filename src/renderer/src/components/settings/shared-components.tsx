@@ -1,68 +1,7 @@
 import { useState } from 'react'
 import { Minus, Plus, ChevronDown, ExternalLink } from 'lucide-react'
-import type { AppSettings } from '../../../../shared/types'
-
-// 渲染进程侧的默认值 fallback（settings 可能在加载前为 null）
-export const FALLBACK_SETTINGS: AppSettings = {
-  apiKey: '',
-  baseUrl: 'https://api.deepseek.com/v1',
-  model: 'deepseek-v4-pro',
-  thinkingMode: true,
-  reasoningEffort: 'high',
-  temperature: 0.7,
-  maxTokens: 393216,
-  fontSize: 'md',
-  customPrompt: '',
-  themeColor: '#6366f1',
-  theme: 'dark',
-  subAgentModel: 'deepseek-v4-flash',
-  subAgentMaxTokens: 393216,
-  subAgentTemperature: 0.7,
-  subAgentTimeout: 60,
-  subAgentReasoningEffort: 'high',
-  orchestratorEnforce: true,
-  mainAgentCustomPrompt: '',
-  mainAgentExpertId: undefined,
-  maxToolRounds: 30,
-  maxContextChars: 300000,
-  maxToolResultChars: 16000,
-  contextRecentKeep: 8,
-  contextSnippedKeep: 200,
-  contextPrunedKeep: 80,
-  terminalTimeout: 60,
-  codeExecTimeout: 60,
-  terminalOutputLimit: 50000,
-  browserHeadless: true,
-  browserIdleTimeout: 5,
-  browserViewportWidth: 1280,
-  browserViewportHeight: 800,
-  defaultSearchEngine: 'bing',
-  searchResultsCount: 5,
-  webFetchMaxLength: 10000,
-  webCacheEnabled: true,
-  webCacheMaxSizeMB: 100,
-  defaultAutoModeLevel: 'off',
-  defaultNetworkSearchOn: false,
-  checkpointEnabled: true,
-  helperCommandTimeout: 30,
-  maxCapturedRequests: 500,
-  mcpConnectTimeout: 30,
-  visionApiKey: 'sk-qeSAXtALEYUpoGzpOFtGQwpgCV4kmvv2lKak57q6PKF1Zj9m',
-  visionBaseUrl: 'https://api.agnes-ai.cn/v1',
-  visionModel: 'agnes-2.5-flash',
-  gpuAcceleration: true,
-  startupAnimationEnabled: true,
-  startupText: 'ximo-Agent',
-  startupTextSize: 76,
-  startupStrokeDuration: 460,
-  startupFontFamily: "'Dancing Script', cursive",
-  burstTransitionEnabled: true,
-  burstTransitionStyle: 'rose',
-  burstParticleCount: 120,
-  burstDuration: 2500,
-  burstColorTheme: 'rose',
-  customTransitionAnimation: undefined
-}
+// 默认设置统一从 shared/defaults 引用，主进程与渲染进程共用单一数据源
+export { DEFAULT_SETTINGS as FALLBACK_SETTINGS } from '../../../../shared/defaults'
 
 // 主题颜色预设
 export const THEME_PRESETS: { name: string; value: string }[] = [

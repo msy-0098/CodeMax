@@ -7,14 +7,16 @@ import type { ReasoningEffort } from '../../../../shared/types'
 const EFFORT_LEVELS: { value: ReasoningEffort; label: string; desc: string }[] = [
   { value: 'off', label: '关', desc: '不输出思维链' },
   { value: 'high', label: 'High', desc: '深度推理' },
-  { value: 'max', label: 'Max', desc: '极致推理' }
+  { value: 'max', label: 'Max', desc: '极致推理' },
+  { value: 'ultra', label: 'Ultra', desc: '工程范式 + 监督审查' }
 ]
 
 // 每档粒子配置：粒子数、飘散速度(s)、飘散距离(px)、Y轴抖动幅度(px)
 const PARTICLE_CONFIG: Record<string, { count: number; duration: number; distance: number; ySpread: number }> = {
   off: { count: 0, duration: 0, distance: 0, ySpread: 0 },
   high: { count: 80, duration: 2.0, distance: 35, ySpread: 8 },
-  max: { count: 120, duration: 1.1, distance: 50, ySpread: 12 }
+  max: { count: 120, duration: 1.1, distance: 50, ySpread: 12 },
+  ultra: { count: 160, duration: 0.8, distance: 60, ySpread: 16 }
 }
 
 // 粒子颜色调色板 — 金色 + 青色 + 洋红，循环分配让拖尾更炫酷
@@ -45,7 +47,7 @@ export function ReasoningSlider(): React.ReactElement {
   const trackRef = useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = useState(false)
 
-  // 顺序：off=0, high=1, max=2，从左到右强度递增
+  // 顺序：off=0, high=1, max=2, ultra=3，从左到右强度递增
   const currentIndex = EFFORT_LEVELS.findIndex((l) => l.value === effort)
 
   // 点击外部关闭
@@ -102,9 +104,11 @@ export function ReasoningSlider(): React.ReactElement {
             ? 'border-accent/40 text-accent bg-accent/8'
             : effort === 'off'
               ? 'text-text-muted hover:text-text-secondary'
-              : effort === 'max'
-                ? 'border-accent/30 text-accent bg-accent/10'
-                : 'text-text-secondary hover:text-text-primary hover:border-border-hover'
+              : effort === 'ultra'
+                ? 'border-accent/40 text-accent bg-accent/15 shadow-[0_0_10px_color-mix(in_srgb,var(--theme-color)_30%,transparent)]'
+                : effort === 'max'
+                  ? 'border-accent/30 text-accent bg-accent/10'
+                  : 'text-text-secondary hover:text-text-primary hover:border-border-hover'
         }`}
         title="思考强度"
       >

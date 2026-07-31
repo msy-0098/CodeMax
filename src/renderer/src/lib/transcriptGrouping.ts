@@ -3,6 +3,9 @@
 
 import type { TranscriptItem, TurnGroup, QuestionAnchor, WarmLayerState, NoticeItem, AssistantItem } from './transcriptTypes'
 
+// re-export 类型供外部使用
+export type { TurnGroup, QuestionAnchor, WarmLayerState } from './transcriptTypes'
+
 export const HOT_TURNS = 30
 export const WARM_PAGE_SIZE = 20
 
@@ -69,13 +72,14 @@ export function buildTurnGroups(items: TranscriptItem[]): TurnGroup[] {
   const groups: TurnGroup[] = []
   let start = -1
   for (let i = 0; i < items.length; i++) {
-    if (items[i].kind === 'user') {
+    const item = items[i]
+    if (item.kind === 'user') {
       if (start >= 0) {
         groups[groups.length - 1].endIdx = i
       }
       start = i
       groups.push({
-        userItem: items[i],
+        userItem: item,
         assistantPreview: '',
         toolCount: 0,
         startIdx: i,
@@ -83,7 +87,6 @@ export function buildTurnGroups(items: TranscriptItem[]): TurnGroup[] {
       })
     } else if (start >= 0 && groups.length > 0) {
       const group = groups[groups.length - 1]
-      const item = items[i]
       if (item.kind === 'assistant' && !item.streaming && item.text.trim()) {
         group.assistantPreview = warmUserPreview(item.text)
       }

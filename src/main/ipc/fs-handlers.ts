@@ -1,18 +1,20 @@
 import { ipcMain } from 'electron'
+import { join, resolve, normalize, dirname, basename } from 'path'
+import { existsSync, readFileSync, readdirSync, statSync } from 'fs'
+import { readdir, stat, readFile, writeFile, mkdir, unlink, rm, rename, copyFile } from 'fs/promises'
+import { tmpdir } from 'os'
 import type { FileTreeNode } from '../../shared/types'
+
+const excludeDirs = new Set([
+  'node_modules', '.git', '.svn', 'dist', 'out', 'build', 'release',
+  '.next', '.nuxt', 'coverage', '__pycache__', '.cache', '.idea', '.vscode',
+  '.reasonix', '.trae', '.meituan-catpaw'
+])
 
 export function registerFsHandlers(): void {
   // 文件树列表 — 供渲染进程直接读取项目目录结构
   ipcMain.handle('fs:listDir', async (_event, dirPath: string, maxDepth?: number) => {
-    const { readdir, stat } = await import('fs/promises')
-    const { join } = await import('path')
     const depth = Math.min(maxDepth ?? 3, 5)
-
-    const excludeDirs = new Set([
-      'node_modules', '.git', '.svn', 'dist', 'out', 'build', 'release',
-      '.next', '.nuxt', 'coverage', '__pycache__', '.cache', '.idea', '.vscode',
-      '.reasonix', '.trae', '.meituan-catpaw'
-    ])
 
     async function buildTree(dir: string, currentDepth: number): Promise<FileTreeNode[]> {
       if (currentDepth >= depth) return []
@@ -52,10 +54,6 @@ export function registerFsHandlers(): void {
 
   // 读取文件内容（供渲染进程 @file 引用注入上下文）
   ipcMain.handle('fs:readFileContent', async (_event, filePath: string, maxLines?: number) => {
-    const { readFile } = await import('fs/promises')
-    const { resolve, normalize } = await import('path')
-    const { existsSync } = await import('fs')
-
     const normalized = normalize(resolve(filePath))
     if (!existsSync(normalized)) {
       return { success: false, error: `文件不存在：${normalized}` }
@@ -81,10 +79,6 @@ export function registerFsHandlers(): void {
 
   // 恢复文件快照（用于代码变更拒绝/版本回退）
   ipcMain.handle('fs:revertFile', async (_event, snapshotPath: string, targetPath: string) => {
-    const { copyFile } = await import('fs/promises')
-    const { existsSync } = await import('fs')
-    const { resolve, normalize } = await import('path')
-
     const snap = normalize(resolve(snapshotPath))
     const target = normalize(resolve(targetPath))
 
@@ -101,10 +95,6 @@ export function registerFsHandlers(): void {
 
   // 列出文件快照（用于版本回退 UI）
   ipcMain.handle('fs:listSnapshots', async (_event, targetFilePath?: string) => {
-    const { readdir, stat } = await import('fs/promises')
-    const { join, basename } = await import('path')
-    const { tmpdir } = await import('os')
-
     const snapDir = join(tmpdir(), 'ximo-agent-snapshots')
     try {
       const files = await readdir(snapDir)
@@ -115,18 +105,14 @@ export function registerFsHandlers(): void {
         const fullPath = join(snapDir, name)
         try {
           const s = await stat(fullPath)
-          // 如果指定了目标文件，则过滤匹配的快照
           if (targetFilePath) {
             const targetBase = basename(targetFilePath).replace(/[^\w.-]/g, '_')
             if (!name.startsWith(targetBase)) continue
           }
           snapshots.push({ name, path: fullPath, size: s.size, mtime: s.mtime.getTime() })
-        } catch {
-          // skip
-        }
+        } catch { /* skip */ }
       }
 
-      // 按修改时间倒序
       snapshots.sort((a, b) => b.mtime - a.mtime)
       return { success: true, snapshots }
     } catch {
@@ -136,13 +122,8 @@ export function registerFsHandlers(): void {
 
   // 写入文件内容
   ipcMain.handle('fs:writeFile', async (_event, filePath: string, content: string) => {
-    const { writeFile, mkdir } = await import('fs/promises')
-    const { resolve, normalize, dirname } = await import('path')
-    const { existsSync } = await import('fs')
-
     const normalized = normalize(resolve(filePath))
     try {
-      // 确保父目录存在
       const dir = dirname(normalized)
       if (!existsSync(dir)) {
         await mkdir(dir, { recursive: true })
@@ -156,17 +137,13 @@ export function registerFsHandlers(): void {
 
   // 删除文件
   ipcMain.handle('fs:deleteFile', async (_event, filePath: string) => {
-    const { unlink, rm } = await import('fs/promises')
-    const { resolve, normalize } = await import('path')
-    const { existsSync, statSync } = await import('fs')
-
     const normalized = normalize(resolve(filePath))
     if (!existsSync(normalized)) {
       return { success: false, error: `文件不存在：${normalized}` }
     }
     try {
-      const stat = statSync(normalized)
-      if (stat.isDirectory()) {
+      const st = statSync(normalized)
+      if (st.isDirectory()) {
         await rm(normalized, { recursive: true, force: true })
       } else {
         await unlink(normalized)
@@ -179,10 +156,6 @@ export function registerFsHandlers(): void {
 
   // 重命名/移动文件
   ipcMain.handle('fs:renameFile', async (_event, oldPath: string, newPath: string) => {
-    const { rename } = await import('fs/promises')
-    const { resolve, normalize, dirname } = await import('path')
-    const { existsSync } = await import('fs')
-
     const oldNormalized = normalize(resolve(oldPath))
     const newNormalized = normalize(resolve(newPath))
     if (!existsSync(oldNormalized)) {
@@ -192,10 +165,8 @@ export function registerFsHandlers(): void {
       return { success: false, error: `目标已存在：${newNormalized}` }
     }
     try {
-      // 确保目标父目录存在
       const dir = dirname(newNormalized)
       if (!existsSync(dir)) {
-        const { mkdir } = await import('fs/promises')
         await mkdir(dir, { recursive: true })
       }
       await rename(oldNormalized, newNormalized)
@@ -207,10 +178,6 @@ export function registerFsHandlers(): void {
 
   // 复制文件
   ipcMain.handle('fs:copyFile', async (_event, srcPath: string, destPath: string) => {
-    const { copyFile } = await import('fs/promises')
-    const { resolve, normalize, dirname } = await import('path')
-    const { existsSync } = await import('fs')
-
     const srcNormalized = normalize(resolve(srcPath))
     const destNormalized = normalize(resolve(destPath))
     if (!existsSync(srcNormalized)) {
@@ -222,7 +189,6 @@ export function registerFsHandlers(): void {
     try {
       const dir = dirname(destNormalized)
       if (!existsSync(dir)) {
-        const { mkdir } = await import('fs/promises')
         await mkdir(dir, { recursive: true })
       }
       await copyFile(srcNormalized, destNormalized)
@@ -234,10 +200,6 @@ export function registerFsHandlers(): void {
 
   // 设计组件库 — 读取 react-bits 组件源码
   ipcMain.handle('design:readComponent', async (_event, category: string, componentId: string) => {
-    const { readFileSync, readdirSync, existsSync } = await import('fs')
-    const { join, dirname } = await import('path')
-
-    // 解析 ui-components 目录（与 DesignComponentTool 相同的策略）
     const mainDir = dirname(new URL(import.meta.url).pathname.replace(/^\//, ''))
     const candidates = [
       join(mainDir, 'tools/Design/ui-components'),

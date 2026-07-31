@@ -2,6 +2,7 @@
 
 import type { Mode, ModelId, ReasoningEffort } from './core'
 import type { ToolCall, ToolResult, ToolDefinition } from './tools'
+import type { CacheDiagnostics } from '../cache/types'
 
 /** 流式输出的单个工作步骤（对应 Agent Loop 的一轮） */
 export interface StreamingSegment {
@@ -43,9 +44,11 @@ export interface Conversation {
   totalTokens?: number
   /** 会话累计 prompt token 数（用于计算缓存命中率） */
   promptTokens?: number
-  /** 会话累计缓存命中 token */
+  /** 会话累计缓存命中 token — 不随压缩重置（D1） */
   cacheHitTokens?: number
-  /** 最近一次 API 调用的 total tokens（prompt+completion）— 即当前上下文窗口占用 */
+  /** 会话累计缓存未命中 token — 不随压缩重置（D1） */
+  cacheMissTokens?: number
+  /** 上下文窗口 token 累计 — 每轮 API 调用的 total_tokens 累加值 */
   contextTokens?: number
 }
 
@@ -79,7 +82,16 @@ export interface StreamChunk {
   reasoningContent?: string
   done?: boolean
   error?: string
-  usage?: { promptTokens: number; completionTokens: number; totalTokens: number; promptCacheHitTokens?: number }
+  usage?: {
+    promptTokens: number
+    completionTokens: number
+    totalTokens: number
+    promptCacheHitTokens?: number
+    /** D3 normaliseUsage — 缓存未命中 token（派生或直报） */
+    promptCacheMissTokens?: number
+  }
+  /** D2 PrefixShape 哈希诊断 — cache miss 原因归因 */
+  cacheDiagnostics?: CacheDiagnostics
   /** 工具调用阶段：LLM 请求调用某个工具 */
   toolCall?: ToolCall
   /** 工具执行阶段：工具执行完毕返回结果 */
@@ -87,4 +99,12 @@ export interface StreamChunk {
   /** 工具调用状态变更 */
   toolStatus?: 'thinking' | 'calling' | 'done'
   toolName?: string
+  /** 监督审查 Agent 反馈（ultra 思考强度专用） */
+  supervision?: {
+    verdict: 'on_track' | 'lazy' | 'off_track' | 'violation'
+    issues: string[]
+    correction?: string
+    severity: 'low' | 'medium' | 'high'
+    round: number
+  }
 }

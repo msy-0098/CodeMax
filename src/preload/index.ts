@@ -233,6 +233,9 @@ const api = {
       return () => ipcRenderer.removeListener('update:downloadSwitch', handler as never)
     }
   },
+
+  // 获取应用版本
+  getVersion: (): Promise<string> => ipcRenderer.invoke('app:getVersion'),
   // DeepSeek V4 分词器 — 本地 token 计数（与 API 口径一致）
   tokenizer: {
     count: (text: string): Promise<{ success: boolean; count: number; error?: string }> =>

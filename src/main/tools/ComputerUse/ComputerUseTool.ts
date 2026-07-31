@@ -136,7 +136,7 @@ export class ComputerUseTool implements Tool {
     const lines = ['## 📸 屏幕截图']
     if (stateId) lines.push(`stateId: \`${stateId}\``)
     if (outline) {
-      lines.push('', '**可交互元素摘要：**', '', formatOutlineCompact(outline))
+      lines.push('', '**可交互元素摘要：**', '', formatOutlineCompact(outline as Record<string, unknown>))
     }
 
     const toolResult: ToolResult = {

@@ -28,8 +28,14 @@ export function AboutTab(): React.ReactElement {
     switchMessage?: string
   }>({})
   const [progress, setProgress] = useState({ downloaded: 0, total: 0 })
+  const [appVersion, setAppVersion] = useState('加载中...')
   const filePathRef = useRef<string>('')
   const hasAutoStartedRef = useRef(false)
+
+  // 获取应用版本
+  useEffect(() => {
+    window.api.getVersion().then(setAppVersion).catch(() => setAppVersion('未知'))
+  }, [])
 
   // 注册下载进度事件监听器
   useEffect(() => {
@@ -122,7 +128,7 @@ export function AboutTab(): React.ReactElement {
         <div>
           <h3 className="text-lg font-bold text-text-primary">XimoAgent</h3>
           <p className="text-sm text-text-secondary">DeepSeek-V4 全能 Agent 工作台</p>
-          <p className="mt-0.5 text-xs text-text-muted">版本 1.0.0 · MIT License</p>
+          <p className="mt-0.5 text-xs text-text-muted">版本 {appVersion} · MIT License</p>
         </div>
       </div>
 

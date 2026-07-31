@@ -69,7 +69,7 @@ function createWindow(): void {
       backgroundThrottling: false,
       spellcheck: false,
       paintWhenInitiallyHidden: true
-    }
+    } as Electron.WebPreferences
   })
 
   // 窗口由 window:ready IPC 触发显示（渲染进程首帧完成后通知）
@@ -575,6 +575,9 @@ ipcMain.handle('update:install', async (_event, filePath: string) => {
   if (error) throw new Error(error)
   return { success: true }
 })
+
+// ---------- 获取应用版本 ----------
+ipcMain.handle('app:getVersion', () => app.getVersion())
 
 // ---------- 注册拆分到独立文件的 IPC 处理器 ----------
 registerChatHandlers()

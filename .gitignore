@@ -10,3 +10,8 @@ tsc_web.txt*
 .idea/
 .env
 .env.*
+
+# 无关临时文件
+temp/
+known_hosts_tmp
+*.db

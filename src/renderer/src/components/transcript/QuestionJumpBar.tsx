@@ -74,7 +74,7 @@ export function QuestionJumpBar({ questions, onJump }: QuestionJumpBarProps): Re
     previewTop.current = closest.previewY
     setHovered(closest.question.turn)
     setShowPreview(true)
-    scrollTo(closest)
+    scrollTo(closest.question)
   }
 
   const dotProps = (idx: number, turn: number): { style: React.CSSProperties } => {

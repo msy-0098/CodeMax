@@ -43,7 +43,7 @@ export class ObserveUiTool implements Tool {
       // 解析 Helper 返回的 outline
       const outline = result?.outline
       const stateId = result?.stateId || ''
-      const note = result?.note || ''
+      const note = (result?.note as string) || ''
       const image = result?.image
 
       if (!outline) {
@@ -56,7 +56,7 @@ export class ObserveUiTool implements Tool {
       }
 
       // 格式化 outline 为可读文本
-      const formatted = formatOutline(outline)
+      const formatted = formatOutline(outline as Record<string, unknown>)
 
       const lines = [
         `## 🔍 UI 观察${root ? ` — ${root}` : ''}`,

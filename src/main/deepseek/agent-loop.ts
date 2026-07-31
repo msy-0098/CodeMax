@@ -6,6 +6,12 @@ import { evaluate, extractSubject, getConfigForMode, YOLO_CONFIG, SAFE_CONFIG } 
 import { callDeepSeekStream } from './api'
 import { agentConfig, truncateToolResult, sanitizeContent } from './context'
 import type { StreamHandlers } from './types'
+import { ContextManager } from '../../shared/cache'
+import type { MutableMessage } from '../../shared/cache'
+import { captureShape, compareShape } from '../cache/prefix-shape'
+import type { PrefixShape } from '../../shared/cache/types'
+import { runSupervisionCheck, needsCorrection, buildCorrectionMessage } from './supervisor'
+import type { AgentRoundSnapshot } from './supervisor'
 
 // ---------- Agent Loop：工具调用循环 ----------
 
@@ -13,6 +19,12 @@ import type { StreamHandlers } from './types'
  * Agent Loop — 带工具调用的主循环
  * 参考 Reasonix 的 agent.go 设计：
  *   思考 → 工具调用 → 观察 → 思考 → ... → 最终回答
+ *
+ * 缓存优化集成（参考 Reasonix）：
+ * - A1 字节稳定前缀：消息只追加不重排
+ * - A2 reasoning_content 本地保留请求剥离（空字符串 key）
+ * - B1/B2 四档 compaction + stuck 暂停
+ * - D2 PrefixShape 哈希诊断
  */
 export async function agentLoop(
   apiKey: string,
@@ -41,8 +53,8 @@ export async function agentLoop(
   // 获取该模式对应的工具
   const tools = request.tools && request.tools.length > 0 ? request.tools : undefined
 
-  // 构造消息列表 — 保留 tool_calls / tool_call_id 以支持多轮工具对话
-  const messages: { role: string; content: string; tool_calls?: unknown; tool_call_id?: string }[] = [
+  // A1 字节稳定前缀 — 消息列表只追加，不重排序、不重写字段
+  const messages: MutableMessage[] = [
     ...request.messages.map((m) => ({
       role: m.role,
       content: m.content,
@@ -51,10 +63,24 @@ export async function agentLoop(
     }))
   ]
 
+  // 监督审查 — ultra 思考强度时启用
+  const supervisionEnabled = request.reasoningEffort === 'ultra'
+  const originalTask = messages.find(m => m.role === 'user')?.content?.slice(0, 1000) || ''
+
+  // B1/B2 四档 compaction + stuck 保护
+  const ctxManager = new ContextManager()
+
+  // D2 PrefixShape 哈希诊断
+  let lastPrefixShape: PrefixShape | null = null
+
+  // 上下文窗口估算（tokens）— 从 maxContextChars 近似推导
+  const contextWindow = agentConfig.maxContextChars > 0
+    ? Math.floor(agentConfig.maxContextChars / 4)
+    : 0
+
   let round = 0
 
   while (round < agentConfig.maxToolRounds) {
-    // 检查是否被取消
     if (signal?.aborted) {
       onChunk({ done: true })
       return
@@ -62,8 +88,10 @@ export async function agentLoop(
 
     round++
 
-    // trimContext 已在 buildApiMessages 中完成，此处不再重复调用
-    // 重复压缩会修改已发送消息的内容，破坏 prompt 缓存前缀
+    // D2 捕获前缀形状 — 在 API 调用前
+    const systemPrompt = messages.find(m => m.role === 'system')?.content || ''
+    const prefixShape = captureShape(systemPrompt, tools || [], ctxManager.rewriteVersion)
+    const prevShape = lastPrefixShape ?? prefixShape
 
     // 单次 API 调用
     const result = await callDeepSeekStream(
@@ -78,6 +106,32 @@ export async function agentLoop(
       request.maxTokens,
       handlers
     )
+
+    // D2 诊断对比 — 每轮 API 调用后
+    const cacheDiag = compareShape(prevShape, prefixShape, result.usage)
+    if (cacheDiag.prefixChanged || result.usage) {
+      onChunk({ cacheDiagnostics: cacheDiag })
+    }
+    lastPrefixShape = prefixShape
+
+    // B1/B2 maybeCompact — 每轮 API 调用后根据 usage 决定是否压缩
+    if (result.usage && contextWindow > 0) {
+      const compactStats = ctxManager.maybeCompact({
+        messages,
+        config: {
+          maxToolResultChars: agentConfig.maxToolResultChars,
+          maxContextChars: agentConfig.maxContextChars,
+          recentKeep: agentConfig.recentKeep,
+          snippedKeep: agentConfig.snippedKeep,
+          prunedKeep: agentConfig.prunedKeep
+        },
+        promptTokens: result.usage.promptTokens,
+        contextWindow
+      })
+      if (compactStats.tier === 'soft') {
+        onChunk({ toolStatus: 'thinking', toolName: 'context' })
+      }
+    }
 
     // 错误处理
     if (result.finishReason === 'error') {
@@ -98,16 +152,37 @@ export async function agentLoop(
         onChunk({ toolStatus: 'calling', toolName: tc.name, toolCall: tc })
       }
 
-      // 将 assistant 消息（含 tool_calls）追加到对话历史
-      messages.push({
+      // A2 reasoning_content 本地保留请求剥离（空字符串 key）
+      // DeepSeek thinking 模式下 assistant tool_calls turn 缺 reasoning_content key 会 400
+      // 策略：key 必存在，值恒为空字符串 — 既满足 API 又不污染前缀
+      const assistantMsg: MutableMessage = {
         role: 'assistant',
-        content: result.content || null as unknown as string,
+        content: result.content || '',
         tool_calls: result.toolCalls.map((tc) => ({
           id: tc.id,
           type: 'function',
           function: { name: tc.name, arguments: JSON.stringify(tc.arguments) }
         }))
-      })
+      }
+      // thinking 模式下 tool_calls turn 必须带 reasoning_content key（空字符串）
+      if (request.thinkingMode && request.reasoningEffort !== 'off') {
+        assistantMsg.reasoning_content = ''
+      }
+      messages.push(assistantMsg)
+
+      // 监督审查 — 在工具执行期间并行运行（非阻塞）
+      let supervisionPromise: ReturnType<typeof runSupervisionCheck> | null = null
+      if (supervisionEnabled && !signal?.aborted) {
+        const snapshot: AgentRoundSnapshot = {
+          round,
+          originalTask,
+          reasoning: result.reasoningContent,
+          content: result.content,
+          toolCalls: result.toolCalls.map(tc => ({ name: tc.name, args: JSON.stringify(tc.arguments).slice(0, 300) })),
+          toolResults: []
+        }
+        supervisionPromise = runSupervisionCheck(apiKey, baseUrl, request.model, request.reasoningEffort, snapshot, signal)
+      }
 
       // 权限引擎 — 按规则评估每个工具调用：allow / ask / deny
       const permConfig = handlers.autoModeLevel === 'yolo' || handlers.yoloMode
@@ -159,7 +234,6 @@ export async function agentLoop(
             })
           }
         }
-        // decision === 'allow' → 直接执行，无需确认
       }
 
       // 并行执行所有未取消的工具调用
@@ -207,7 +281,7 @@ export async function agentLoop(
             })
           }
 
-          // 工具执行失败时，将 error 信息作为 content 传给 LLM，避免 LLM 看到空结果后误判
+          // 工具执行失败时，将 error 信息作为 content 传给 LLM
           const toolContent = toolResult.success
             ? toolResult.content
             : (toolResult.error || toolResult.content || '工具执行失败')
@@ -234,7 +308,29 @@ export async function agentLoop(
         }
       }
 
-      // 工具执行完毕，继续下一轮循环（让 LLM 根据工具结果生成最终回答）
+      // 监督审查 — 收集并行运行的监督结果（工具执行期间已完成或即将完成）
+      if (supervisionPromise) {
+        const supervisionResult = await supervisionPromise
+        if (supervisionResult) {
+          onChunk({
+            supervision: {
+              verdict: supervisionResult.verdict,
+              issues: supervisionResult.issues,
+              correction: supervisionResult.correction,
+              severity: supervisionResult.severity,
+              round
+            }
+          })
+          if (needsCorrection(supervisionResult)) {
+            messages.push({
+              role: 'system',
+              content: buildCorrectionMessage(supervisionResult, round)
+            })
+          }
+        }
+      }
+
+      // 工具执行完毕，继续下一轮循环
       onChunk({ toolStatus: 'thinking' })
       continue
     }
@@ -250,7 +346,6 @@ export async function agentLoop(
     role: 'user',
     content: '你已经完成了所有工具调用。请基于已有信息直接给出最终回答，不要再调用任何工具。'
   })
-  // 不再调用 trimContext — 修改已有消息会破坏 prompt 缓存前缀
   const finalResult = await callDeepSeekStream(
     apiKey, baseUrl, request.model, messages, undefined,
     request.thinkingMode, request.reasoningEffort, request.temperature, request.maxTokens, handlers

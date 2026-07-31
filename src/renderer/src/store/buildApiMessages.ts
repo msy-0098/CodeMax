@@ -3,8 +3,10 @@ import type {
   ApiMessage,
   Conversation,
   ImportedSkill,
-  Mode
+  Mode,
+  ReasoningEffort
 } from '../../../shared/types'
+import { GLM_PARADIGM_PROMPT } from '../../../shared/glm-paradigm'
 import { trimContext, truncateToolResult, type AgentConfig } from '../../../shared/context-compress'
 
 /** 默认上下文配置 — 与 deepseek.ts 中 agentConfig 默认值保持一致 */
@@ -44,7 +46,9 @@ export async function buildApiMessages(
   activeStyleId?: string | null,
   mainAgentCustomPrompt?: string,
   mainAgentExpertId?: string,
-  contextConfig?: Partial<AgentConfig>
+  contextConfig?: Partial<AgentConfig>,
+  reasoningEffort?: ReasoningEffort,
+  memoryEnabled?: boolean
 ): Promise<ApiMessage[]> {
   // 合并上下文配置
   const config: AgentConfig = { ...DEFAULT_CONFIG, ...contextConfig }
@@ -60,10 +64,13 @@ export async function buildApiMessages(
   // 原因：memory_update 工具会修改记忆内容，如果记忆在 systemContent 中，
   //   会导致整个 25KB+ 系统提示词（含专家人格）缓存全部失效。
   //   拆出后，记忆变化只影响记忆消息及之后的对话历史，系统提示词保持缓存。
+  // memoryEnabled 为 false 时跳过记忆加载 — Agent 完全感知不到记忆功能
   let memoryContent = ''
-  try {
-    memoryContent = (await window.api.memory.load(conversation.mode as Mode)).trim()
-  } catch { /* 记忆加载失败不应阻塞对话 */ }
+  if (memoryEnabled !== false) {
+    try {
+      memoryContent = (await window.api.memory.load(conversation.mode as Mode)).trim()
+    } catch { /* 记忆加载失败不应阻塞对话 */ }
+  }
 
   // 主 Agent 专家人格注入 — 从设置中选择的专家，将人格注入主 Agent
   if (mainAgentExpertId) {
@@ -76,6 +83,11 @@ export async function buildApiMessages(
   // 主 Agent 自定义提示词注入
   if (mainAgentCustomPrompt) {
     systemContent += `\n\n--- 主 Agent 自定义指令 ---\n${mainAgentCustomPrompt}`
+  }
+
+  // 工程范式注入 — ultra 思考强度时注入完整五锁协议
+  if (reasoningEffort === 'ultra') {
+    systemContent += `\n\n--- 工程化编程范式（Ultra 模式约束协议）---\n${GLM_PARADIGM_PROMPT}`
   }
 
   // 将项目路径注入系统提示（而非用户消息），让 Agent 始终知道项目上下文

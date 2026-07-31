@@ -82,18 +82,21 @@ export function ModelTab({
             {([
               { value: 'off' as ReasoningEffort, label: '关闭', desc: '不输出思维链' },
               { value: 'high' as ReasoningEffort, label: 'High', desc: '深度推理' },
-              { value: 'max' as ReasoningEffort, label: 'Max', desc: '极致推理' }
+              { value: 'max' as ReasoningEffort, label: 'Max', desc: '极致推理' },
+              { value: 'ultra' as ReasoningEffort, label: 'Ultra', desc: '范式+监督' }
             ]).map((level) => (
               <button
                 key={level.value}
                 onClick={() => update({ reasoningEffort: level.value })}
                 className={`flex-1 rounded-lg border p-2.5 text-center transition-all duration-200 ${
                   local.reasoningEffort === level.value
-                    ? level.value === 'max'
-                      ? 'border-accent bg-accent/15 shadow-[0_0_12px_color-mix(in_srgb,var(--theme-color)_40%,transparent)]'
-                      : level.value === 'high'
-                        ? 'border-accent bg-accent/10'
-                        : 'border-border bg-bg-elevated'
+                    ? level.value === 'ultra'
+                      ? 'border-accent bg-accent/20 shadow-[0_0_16px_color-mix(in_srgb,var(--theme-color)_50%,transparent)]'
+                      : level.value === 'max'
+                        ? 'border-accent bg-accent/15 shadow-[0_0_12px_color-mix(in_srgb,var(--theme-color)_40%,transparent)]'
+                        : level.value === 'high'
+                          ? 'border-accent bg-accent/10'
+                          : 'border-border bg-bg-elevated'
                     : 'border-border bg-bg-elevated hover:border-border-hover'
                 }`}
               >

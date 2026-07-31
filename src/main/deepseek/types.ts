@@ -1,4 +1,5 @@
 import type { StreamChunk, ToolCall } from '../../shared/types'
+import type { NormalizedUsage } from '../../shared/cache'
 
 // ---------- 类型 ----------
 
@@ -21,6 +22,9 @@ export interface SingleCallResult {
   content: string
   reasoningContent: string
   toolCalls: ToolCall[]
-  usage?: StreamChunk['usage']
+  /** 归一化后的 usage（D3 normaliseUsage 双形态归一化） */
+  usage?: NormalizedUsage
   error?: string
+  /** C1 emitted 标志 — 是否已有 content/reasoning/tool_call 输出（用于零输出重放决策） */
+  emitted?: boolean
 }

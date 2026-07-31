@@ -1,5 +1,6 @@
 import type { ToolCall, ToolResult, StreamChunk, ToolContext } from '../../../shared/types'
 import { toolRegistry } from '../ToolRegistry'
+import { toApiEffort } from '../../deepseek/api'
 import { MAX_SUB_AGENT_ROUNDS, MAX_SUB_TOOL_RESULT } from './expert-config'
 
 interface SubMessage {
@@ -58,7 +59,7 @@ export async function callSubAgentWithTools(
         max_tokens: context.subAgentMaxTokens ?? 8192,
         ...(toolDefs.length > 0 ? { tools: toolDefs, tool_choice: 'auto' } : {}),
         ...(context.subAgentReasoningEffort && context.subAgentReasoningEffort !== 'off'
-          ? { enable_thinking: true, reasoning_effort: context.subAgentReasoningEffort }
+          ? { enable_thinking: true, reasoning_effort: toApiEffort(context.subAgentReasoningEffort) }
           : { temperature: context.subAgentTemperature ?? 0.7 })
       }
 
@@ -144,7 +145,7 @@ export async function callSubAgentWithTools(
       stream: false,
       max_tokens: context.subAgentMaxTokens ?? 8192,
       ...(context.subAgentReasoningEffort && context.subAgentReasoningEffort !== 'off'
-        ? { enable_thinking: true, reasoning_effort: context.subAgentReasoningEffort }
+        ? { enable_thinking: true, reasoning_effort: toApiEffort(context.subAgentReasoningEffort) }
         : { temperature: context.subAgentTemperature ?? 0.7 })
     }
 

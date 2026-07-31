@@ -1,5 +1,7 @@
 import { spawn, type ChildProcess } from 'child_process'
-import type { Tool, ToolDefinition, ToolCall, ToolResult, StreamChunk, ToolContext } from '../../../shared/types'
+import { app } from 'electron'
+import type { Tool } from '../Tool'
+import type { ToolDefinition, ToolCall, ToolResult, StreamChunk, ToolContext, ToolParamProperty } from '../../../shared/types'
 import type { McpServerConfig } from '../../../shared/types'
 
 // ---------------------------------------------------------------------------
@@ -113,7 +115,7 @@ export class McpClient {
     await this.sendRequest('initialize', {
       protocolVersion: '2024-11-05',
       capabilities: {},
-      clientInfo: { name: 'ximo-agent', version: '1.0.0' }
+      clientInfo: { name: 'ximo-agent', version: app.getVersion() }
     })
 
     // 发送 initialized 通知
@@ -134,7 +136,7 @@ export class McpClient {
       params: {
         protocolVersion: '2024-11-05',
         capabilities: {},
-        clientInfo: { name: 'ximo-agent', version: '1.0.0' }
+        clientInfo: { name: 'ximo-agent', version: app.getVersion() }
       }
     })
 
@@ -310,10 +312,10 @@ export class McpToolAdapter implements Tool {
     this.toolName = schema.name
 
     // 将 MCP inputSchema 转换为项目的 ToolParamProperty 格式
-    const properties: Record<string, unknown> = {}
+    const properties: Record<string, ToolParamProperty> = {}
     if (schema.inputSchema?.properties) {
       for (const [key, value] of Object.entries(schema.inputSchema.properties)) {
-        properties[key] = value
+        properties[key] = value as ToolParamProperty
       }
     }
 

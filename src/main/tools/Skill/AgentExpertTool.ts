@@ -1,4 +1,5 @@
-import type { Tool, ToolDefinition, ToolCall, ToolResult, StreamChunk, ToolContext, Skill } from '../../../shared/types'
+import type { Tool } from '../Tool'
+import type { ToolDefinition, ToolCall, ToolResult, StreamChunk, ToolContext, Skill } from '../../../shared/types'
 import { loadSkills, saveSkills } from '../../SkillStore'
 import { agentsData, analyzeExpert, buildExpertSystemPrompt, type AgentEntry } from './expert-config'
 import { callSubAgentWithTools } from './sub-agent'
