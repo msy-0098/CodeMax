@@ -21,9 +21,11 @@ export function AboutTab(): React.ReactElement {
     currentVersion?: string
     latestVersion?: string
     downloadUrl?: string
+    giteeDownloadUrl?: string
     fileName?: string
     fileSize?: number
     error?: string
+    switchMessage?: string
   }>({})
   const [progress, setProgress] = useState({ downloaded: 0, total: 0 })
   const filePathRef = useRef<string>('')
@@ -38,9 +40,13 @@ export function AboutTab(): React.ReactElement {
       filePathRef.current = data.filePath
       setUpdateState('downloaded')
     })
+    const unsubSwitch = window.api.update.onDownloadSwitch((data) => {
+      setUpdateInfo((prev) => ({ ...prev, switchMessage: data.message }))
+    })
     return () => {
       unsubProgress()
       unsubComplete()
+      unsubSwitch()
     }
   }, [])
 
@@ -66,11 +72,12 @@ export function AboutTab(): React.ReactElement {
             currentVersion: result.currentVersion,
             latestVersion: result.latestVersion,
             downloadUrl: result.downloadUrl,
+            giteeDownloadUrl: result.giteeDownloadUrl,
             fileName: result.fileName,
             fileSize: result.fileSize
           })
           // 自动开始下载
-          startDownload(result.downloadUrl ?? '', result.fileSize ?? 0)
+          startDownload(result.downloadUrl ?? '', result.giteeDownloadUrl ?? '', result.fileSize ?? 0)
         } else {
           setUpdateInfo({ currentVersion: result.currentVersion })
           setUpdateState('up-to-date')
@@ -85,12 +92,12 @@ export function AboutTab(): React.ReactElement {
     }
   }
 
-  const startDownload = async (downloadUrl: string, fileSize: number): Promise<void> => {
+  const startDownload = async (downloadUrl: string, fallbackUrl: string, fileSize: number): Promise<void> => {
     if (!downloadUrl) return
     setUpdateState('downloading')
     setProgress({ downloaded: 0, total: fileSize })
     try {
-      const result = await window.api.update.download(downloadUrl)
+      const result = await window.api.update.download(downloadUrl, fallbackUrl)
       if (!result.success) {
         setUpdateInfo((prev) => ({ ...prev, error: result.error ?? '下载失败' }))
         setUpdateState('error')
@@ -146,6 +153,9 @@ export function AboutTab(): React.ReactElement {
                 正在下载 v{updateInfo.latestVersion}...
               </span>
             </div>
+            {updateInfo.switchMessage && (
+              <p className="mb-1.5 text-xs text-yellow-400">{updateInfo.switchMessage}</p>
+            )}
             <div className="h-2 w-full rounded-full bg-bg-base overflow-hidden mb-1.5">
               <div
                 className="h-full rounded-full bg-accent transition-[width] duration-300 ease-out"

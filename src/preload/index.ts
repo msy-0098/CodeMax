@@ -207,13 +207,14 @@ const api = {
       latestVersion?: string
       hasUpdate?: boolean
       downloadUrl?: string
+      giteeDownloadUrl?: string
       fileName?: string
       fileSize?: number
       releaseUrl?: string
       error?: string
     }> => ipcRenderer.invoke('update:check'),
-    download: (downloadUrl: string): Promise<{ success: boolean; filePath?: string; error?: string }> =>
-      ipcRenderer.invoke('update:download', downloadUrl),
+    download: (downloadUrl: string, fallbackUrl?: string): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+      ipcRenderer.invoke('update:download', downloadUrl, fallbackUrl),
     install: (filePath: string): Promise<{ success: boolean }> =>
       ipcRenderer.invoke('update:install', filePath),
     onProgress: (callback: (data: { downloaded: number; total: number }) => void): (() => void) => {
@@ -225,6 +226,11 @@ const api = {
       const handler = (_event: unknown, data: { filePath: string }): void => callback(data)
       ipcRenderer.on('update:downloadComplete', handler as never)
       return () => ipcRenderer.removeListener('update:downloadComplete', handler as never)
+    },
+    onDownloadSwitch: (callback: (data: { message: string }) => void): (() => void) => {
+      const handler = (_event: unknown, data: { message: string }): void => callback(data)
+      ipcRenderer.on('update:downloadSwitch', handler as never)
+      return () => ipcRenderer.removeListener('update:downloadSwitch', handler as never)
     }
   },
   // DeepSeek V4 分词器 — 本地 token 计数（与 API 口径一致）
