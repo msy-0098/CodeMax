@@ -20,14 +20,19 @@ const DEFAULT_CONFIG: AgentConfig = {
  * 构造发送给 API 的消息列表（含系统提示，不含历史中的 reasoning_content）
  * 关键：保留 tool_calls / tool 结果，让 LLM 在多轮对话中记住之前的操作
  *
- * 缓存优化策略：
- * 1. 系统提示词只包含稳定内容（模式提示词、自定义指令、专家人格、项目路径、技能）
- *    — 浏览器/操控电脑等动态运行时状态作为独立 system 消息放在消息列表末尾，
- *      避免状态变化导致整个系统提示词（~25KB）缓存失效
- * 2. 工具结果使用 truncateToolResult 截断 — 与 Agent Loop 中的截断逻辑完全一致，
- *    确保跨会话轮次的工具结果内容相同，不破坏 prompt 缓存前缀
- * 3. 在返回前调用 trimContext 压缩旧 tool 结果 — 与 Agent Loop 首轮的压缩逻辑一致，
- *    Agent Loop 后续轮次不再压缩，保护缓存前缀
+ * 缓存优化策略（按稳定性分层前缀）：
+ * DeepSeek prompt 缓存基于前缀匹配——Turn N+1 的消息列表必须是 Turn N 的严格扩展，
+ * 否则前缀断裂处之后的所有 token 都变为未命中。
+ *
+ * 消息列表按「稳定性递减」排列，确保高稳定内容始终命中缓存：
+ *   [0] system — 稳定系统提示词（模式提示词+自定义指令+专家人格+项目路径+技能，~25KB+）
+ *   [1] system — 运行环境信息（日期级，同一天内不变）
+ *   [2] system — 运行时工具状态（浏览器/操控电脑开关，偶尔变化）
+ *   [3] system — 模式记忆（Agent 调用 memory_update 时变化，偶尔发生）
+ *   [4+] 对话历史（每轮追加，天然扩展）
+ *
+ * 关键：记忆从 systemContent 中拆出为独立消息，避免 memory_update 后
+ *       整个 25KB+ 系统提示词（含专家提示词）缓存全部失效。
  */
 export async function buildApiMessages(
   conversation: Conversation,
@@ -51,12 +56,13 @@ export async function buildApiMessages(
     ? `${systemPrompt}\n\n--- 附加指令 ---\n${customPrompt}`
     : systemPrompt
 
-  // 模式记忆注入 — 加载当前模式的持久化记忆，注入系统提示词
+  // 模式记忆 — 拆出为独立 system 消息，放在稳定前缀之后、对话历史之前
+  // 原因：memory_update 工具会修改记忆内容，如果记忆在 systemContent 中，
+  //   会导致整个 25KB+ 系统提示词（含专家人格）缓存全部失效。
+  //   拆出后，记忆变化只影响记忆消息及之后的对话历史，系统提示词保持缓存。
+  let memoryContent = ''
   try {
-    const memoryContent = await window.api.memory.load(conversation.mode as Mode)
-    if (memoryContent.trim()) {
-      systemContent += `\n\n--- 记忆 ---\n${memoryContent.trim()}`
-    }
+    memoryContent = (await window.api.memory.load(conversation.mode as Mode)).trim()
   } catch { /* 记忆加载失败不应阻塞对话 */ }
 
   // 主 Agent 专家人格注入 — 从设置中选择的专家，将人格注入主 Agent
@@ -77,8 +83,8 @@ export async function buildApiMessages(
     systemContent += `\n\n--- 项目上下文 ---\n📂 当前项目路径：${conversation.projectPath}\n当用户提到"项目"、"当前文件"等时，请基于此路径使用 file_list / file_read / project_context 等工具操作项目文件。`
   }
 
-  // 收集运行时工具状态 — 不注入系统提示词，而是作为独立消息放在末尾
-  // 避免浏览器/操控电脑状态变化导致整个系统提示词缓存失效
+  // 收集运行时工具状态 — 作为独立 system 消息放在 system prompt 之后、对话历史之前
+  // 成为稳定前缀的一部分：状态变化时缓存断裂一次，但后续轮次立即恢复
   const runtimeStatusLines: string[] = []
   if (browserOpen) {
     runtimeStatusLines.push('🌐 内嵌浏览器：已开启 — 你的 browser_* 工具已直接连接到右侧栏内嵌浏览器。用户在此浏览器中的操作和你通过 browser_navigate / browser_click / browser_type 等工具执行的操作共享同一个页面。当用户问你能否看到某个网页时，直接使用 browser_screenshot 或 browser_get_content 查看当前页面内容，不要使用 find_roots（那是桌面操控工具，不是浏览器工具）。')
@@ -131,6 +137,24 @@ export async function buildApiMessages(
     { role: 'system', content: systemContent }
   ]
 
+  // 运行时工具状态紧随 system prompt，作为稳定前缀的一部分
+  // 放在前缀位置而非末尾：避免新对话消息插入时后缀位置偏移导致缓存前缀断裂
+  if (runtimeStatusLines.length > 0) {
+    messages.push({
+      role: 'system',
+      content: `--- 后台工具状态 ---\n${runtimeStatusLines.join('\n')}`
+    })
+  }
+
+  // 模式记忆作为独立 system 消息 — 放在稳定前缀之后、对话历史之前
+  // 稳定性低于系统提示词（memory_update 会修改），但高于对话历史（不会每轮都变）
+  if (memoryContent) {
+    messages.push({
+      role: 'system',
+      content: `--- 记忆 ---\n${memoryContent}`
+    })
+  }
+
   for (const msg of conversation.messages) {
     if (msg.role === 'system') continue
 
@@ -168,19 +192,8 @@ export async function buildApiMessages(
     }
   }
 
-  // 运行时工具状态作为独立 system 消息放在消息列表末尾
-  // 不放在系统提示词中，避免浏览器/操控电脑状态变化导致整个系统提示词缓存失效
-  // 放在末尾：系统提示词 + 对话历史的前缀保持稳定，仅末尾的运行时状态消息随状态变化
-  if (runtimeStatusLines.length > 0) {
-    messages.push({
-      role: 'system',
-      content: `--- 后台工具状态 ---\n${runtimeStatusLines.join('\n')}`
-    })
-  }
-
-  // 在返回前压缩上下文 — 与 Agent Loop 首轮的压缩逻辑一致
-  // 确保 buildApiMessages 产出的消息与 Agent Loop 首轮 API 调用发送的消息完全一致
-  // Agent Loop 后续轮次不再压缩，保护缓存前缀
+  // 在返回前压缩上下文 — Agent Loop 不再重复调用 trimContext
+  // 确保 buildApiMessages 产出的消息就是最终发送给 API 的消息（chat-handler 仅插入 env_info 前缀）
   trimContext(messages, config)
 
   return messages

@@ -4,7 +4,7 @@ import { isRecording, appendStep } from '../SkillStore'
 import { getCheckpointStore } from '../CheckpointStore'
 import { evaluate, extractSubject, getConfigForMode, YOLO_CONFIG, SAFE_CONFIG } from '../Permission'
 import { callDeepSeekStream } from './api'
-import { agentConfig, trimContext, truncateToolResult, sanitizeContent } from './context'
+import { agentConfig, truncateToolResult, sanitizeContent } from './context'
 import type { StreamHandlers } from './types'
 
 // ---------- Agent Loop：工具调用循环 ----------
@@ -62,11 +62,8 @@ export async function agentLoop(
 
     round++
 
-    // 上下文窗口管理：仅在首轮压缩旧 tool 结果
-    // 后续轮次不再压缩——修改已发送给 API 的消息会破坏 prompt 缓存前缀，导致缓存命中率骤降
-    if (round === 1) {
-      trimContext(messages)
-    }
+    // trimContext 已在 buildApiMessages 中完成，此处不再重复调用
+    // 重复压缩会修改已发送消息的内容，破坏 prompt 缓存前缀
 
     // 单次 API 调用
     const result = await callDeepSeekStream(

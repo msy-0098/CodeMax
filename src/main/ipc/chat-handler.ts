@@ -125,9 +125,14 @@ export function registerChatHandlers(): void {
     // 合并模式工具 + MCP 工具
     const allTools = [...(modeTools || []), ...mcpToolDefs]
 
-    // 注入运行环境信息 — 让 Agent 始终知道当前时间、OS、Shell 等，避免反复试探
+    // 注入运行环境信息 — 插入到 system prompt 之后、对话历史之前，作为稳定前缀的一部分
+    // 环境信息使用日期（不含秒级时间戳），确保同一会话内前缀稳定，缓存命中率最大化
     const envInfo = buildEnvInfo()
-    const messagesWithEnv: ApiMessage[] = [...request.messages, { role: 'system', content: envInfo }]
+    const messagesWithEnv: ApiMessage[] = [
+      request.messages[0],  // system prompt
+      { role: 'system', content: envInfo },  // 环境信息（稳定前缀）
+      ...request.messages.slice(1)  // runtime_status + memory + 对话历史
+    ]
 
     try {
       if (allTools.length > 0) {
@@ -187,7 +192,11 @@ export function registerChatHandlers(): void {
   })
 }
 
-/** 构建运行环境信息字符串 — 注入为 system 消息，让 Agent 始终知道时间、OS、Shell */
+/**
+ * 构建运行环境信息字符串 — 注入为 system 消息（前缀位置），让 Agent 知道 OS、Shell 等。
+ * 仅包含日期（不含时分秒），确保同一会话内前缀稳定，不破坏 prompt 缓存。
+ * Agent 如需精确时间可用 terminal_exec 执行 date 命令。
+ */
 function buildEnvInfo(): string {
   const now = new Date()
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -198,12 +207,11 @@ function buildEnvInfo(): string {
 
   const pad = (n: number): string => String(n).padStart(2, '0')
   const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-  const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
   const weekdays = ['日', '一', '二', '三', '四', '五', '六']
   const weekday = weekdays[now.getDay()]
 
   const lines: string[] = [
-    `⏰ 当前时间：${dateStr} ${timeStr} 星期${weekday} (${tz})`,
+    `⏰ 当前日期：${dateStr} 星期${weekday} (${tz})`,
     `💻 操作系统：${platformName} ${process.arch}`,
     `🔧 终端 Shell：${shellName}${isWin ? '（PowerShell 语法，如 $env:PATH）' : '（Bash 语法）'}`,
     `📦 Node.js：${process.version}`,
@@ -212,8 +220,8 @@ function buildEnvInfo(): string {
   ]
 
   const pathHint = isWin
-    ? 'Windows 路径用反斜杠 \\（如 C:\\Users\\xxx）'
-    : 'Unix 路径用正斜杠 /（如 /home/xxx）'
+    ? 'Windows 路径用反斜杠 \\(如 C:\\Users\\xxx)'
+    : 'Unix 路径用正斜杠 /(如 /home/xxx)'
 
-  return `--- 运行环境 ---\n${lines.join('\n')}\n\n⚠️ 请基于以上信息使用正确的命令语法和路径格式（${pathHint}）。联网搜索时，上述时间即为"今天"，搜索最新信息时无需再询问用户当前日期。`
+  return `--- 运行环境 ---\n${lines.join('\n')}\n\n⚠️ 请基于以上信息使用正确的命令语法和路径格式（${pathHint}）。联网搜索时，上述日期即为"今天"，搜索最新信息时无需再询问用户当前日期。如需精确时间可用 terminal_exec 执行 date 命令。`
 }
