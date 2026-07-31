@@ -6,7 +6,10 @@
 
 ## 安装
 
-预构建安装包可直接从 [GitHub Releases](https://github.com/ximo888ok-netizen/ximo-Agent/releases) 下载 `XimoAgent Setup x.x.x.exe`，双击运行后按向导完成安装。
+预构建安装包可从以下渠道下载 `XimoAgent Setup x.x.x.exe`，双击运行后按向导完成安装：
+
+- [GitHub Releases](https://github.com/ximo888ok-netizen/ximo-Agent/releases)
+- [Gitee Releases](https://gitee.com/ximo666ge/ximo-Agent/releases)
 
 ## 技术栈
 
