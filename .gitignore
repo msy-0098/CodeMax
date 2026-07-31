@@ -15,3 +15,6 @@ tsc_web.txt*
 temp/
 known_hosts_tmp
 *.db
+
+# 翻译缓存
+.translate-cache.json
