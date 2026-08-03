@@ -7,7 +7,8 @@ import type {
   RecordingSession,
   CapturedRequest,
   ImportedSkill,
-  StreamingSegment
+  StreamingSegment,
+  ModelProvider
 } from '../../../shared/types'
 
 /** UI 组件元数据 — 镜像 catalog 中的结构 */
@@ -148,6 +149,11 @@ export interface StoreState {
   // ---- 设置 ----
   updateSettings: (partial: Partial<AppSettings>) => Promise<void>
   setShowSettings: (show: boolean) => void
+
+  // ---- 模型服务商 ----
+  switchProvider: (providerId: string, model?: string) => Promise<void>
+  upsertProvider: (provider: ModelProvider) => Promise<void>
+  removeProvider: (providerId: string) => Promise<void>
 
   // ---- 模式 ----
   setMode: (mode: Mode) => void

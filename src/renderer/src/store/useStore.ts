@@ -103,6 +103,59 @@ export const useStore = create<StoreState>()((...args) => {
     set({ settings: updated })
   },
 
+  switchProvider: async (providerId, model) => {
+    const current = get().settings
+    if (!current) return
+    const provider = current.providers?.find((p) => p.id === providerId)
+    if (!provider) return
+    const nextModel = model ?? provider.models[0] ?? current.model
+    const updated = {
+      ...current,
+      activeProviderId: providerId,
+      baseUrl: provider.baseUrl,
+      apiKey: provider.apiKey,
+      model: nextModel
+    }
+    await window.api.settings.save(updated)
+    set({ settings: updated })
+  },
+
+  upsertProvider: async (provider) => {
+    const current = get().settings
+    if (!current) return
+    const exists = current.providers?.some((p) => p.id === provider.id)
+    const providers = exists
+      ? (current.providers ?? []).map((p) => (p.id === provider.id ? provider : p))
+      : [...(current.providers ?? []), provider]
+    const updated: typeof current = { ...current, providers }
+    // 更新的是当前激活服务商时，同步顶层快照
+    if (provider.id === current.activeProviderId) {
+      updated.baseUrl = provider.baseUrl
+      updated.apiKey = provider.apiKey
+    }
+    await window.api.settings.save(updated)
+    set({ settings: updated })
+  },
+
+  removeProvider: async (providerId) => {
+    const current = get().settings
+    if (!current) return
+    const providers = (current.providers ?? []).filter((p) => p.id !== providerId)
+    const updated: typeof current = { ...current, providers }
+    // 删除的是激活服务商时，回退到第一个
+    if (current.activeProviderId === providerId) {
+      const fallback = providers[0]
+      if (fallback) {
+        updated.activeProviderId = fallback.id
+        updated.baseUrl = fallback.baseUrl
+        updated.apiKey = fallback.apiKey
+        updated.model = fallback.models[0] ?? current.model
+      }
+    }
+    await window.api.settings.save(updated)
+    set({ settings: updated })
+  },
+
   setShowSettings: (show) => set({ showSettings: show }),
 
   setMode: (mode) => {
