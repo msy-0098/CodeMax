@@ -8,7 +8,7 @@ import {
   XCircle,
   ExternalLink
 } from 'lucide-react'
-import type { AppSettings, TestResult } from '../../../../shared/types'
+import type { AppSettings, TestResult, ModelProvider } from '../../../../shared/types'
 import { SectionTitle } from './shared-components'
 import type { TestState } from './shared-components'
 
@@ -30,6 +30,21 @@ export function ApiTab({
   onTest: () => void
 }): React.ReactElement {
   const keyConfigured = local.apiKey.trim().length > 0
+
+  /** 更新当前激活服务商的连接参数，并同步顶层快照 */
+  const updateActiveProviderConn = async (patch: Partial<ModelProvider>): Promise<void> => {
+    const providers = local.providers ?? []
+    const idx = providers.findIndex((p) => p.id === local.activeProviderId)
+    if (idx < 0) return
+    const next = { ...providers[idx], ...patch }
+    const nextProviders = [...providers]
+    nextProviders[idx] = next
+    update({
+      providers: nextProviders,
+      baseUrl: next.baseUrl,
+      apiKey: next.apiKey
+    })
+  }
 
   return (
     <div className="space-y-5">
@@ -57,7 +72,7 @@ export function ApiTab({
             <input
               type={showKey ? 'text' : 'password'}
               value={local.apiKey}
-              onChange={(e) => update({ apiKey: e.target.value })}
+              onChange={(e) => void updateActiveProviderConn({ apiKey: e.target.value })}
               placeholder="sk-..."
               className="w-full rounded-lg border border-border bg-bg-elevated px-3 py-2 pr-10 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
             />
@@ -148,7 +163,7 @@ export function ApiTab({
         <input
           type="text"
           value={local.baseUrl}
-          onChange={(e) => update({ baseUrl: e.target.value })}
+          onChange={(e) => void updateActiveProviderConn({ baseUrl: e.target.value })}
           className="w-full rounded-lg border border-border bg-bg-elevated px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none"
         />
         <p className="mt-1.5 text-xs text-text-muted">
