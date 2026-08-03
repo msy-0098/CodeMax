@@ -410,7 +410,13 @@ ipcMain.handle('tokenizer:countMessages', async (_event, messages: { role: strin
 interface ReleaseInfo {
   tag_name: string
   html_url: string
-  assets?: Array<{ browser_download_url: string; name: string; size: number }>
+  assets?: ReleaseAsset[]
+}
+
+interface ReleaseAsset {
+  browser_download_url: string
+  name: string
+  size: number
 }
 
 async function fetchLatestRelease(apiUrl: string, headers: Record<string, string>): Promise<ReleaseInfo | null> {
@@ -423,6 +429,14 @@ async function fetchLatestRelease(apiUrl: string, headers: Record<string, string
   }
 }
 
+/** 按当前平台选择匹配的发布资产：Windows→.exe，macOS→.dmg/.zip，Linux→.AppImage/.deb/.rpm；无匹配时回退首个资产 */
+function pickAssetForPlatform(assets?: ReleaseAsset[]): ReleaseAsset | undefined {
+  const pattern = process.platform === 'win32' ? /\.exe$/i
+    : process.platform === 'darwin' ? /\.(dmg|zip)$/i
+    : /\.(AppImage|deb|rpm)$/i
+  return assets?.find((a) => pattern.test(a.name)) ?? assets?.[0]
+}
+
 function extractVersionInfo(release: ReleaseInfo, currentVersion: string): {
   latestVersion: string
   downloadUrl: string
@@ -432,7 +446,7 @@ function extractVersionInfo(release: ReleaseInfo, currentVersion: string): {
 } | null {
   const latestVersion = release.tag_name.replace(/^v/, '')
   if (latestVersion === currentVersion) return null
-  const asset = release.assets?.[0]
+  const asset = pickAssetForPlatform(release.assets)
   return {
     latestVersion,
     downloadUrl: asset?.browser_download_url ?? release.html_url,

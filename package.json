@@ -11,6 +11,8 @@
     "start": "electron-vite preview",
     "preview": "electron-vite preview",
     "build:win": "electron-vite build && electron-builder --win",
+    "build:linux": "electron-vite build && electron-builder --linux",
+    "build:mac": "electron-vite build && electron-builder --mac",
     "make-icon": "node scripts/make-icon.mjs",
     "gen-previews": "node scripts/gen-previews.mjs",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
@@ -69,6 +71,20 @@
         "nsis"
       ],
       "icon": "build/icon.ico"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "build/icon.png",
+      "category": "Development"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.developer-tools"
     },
     "nsis": {
       "oneClick": false,
