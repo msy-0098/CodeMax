@@ -5,7 +5,8 @@ import {
   Divider,
   InfoCard,
   FeatureRow,
-  LinkRow
+  LinkRow,
+  APP_COPYRIGHT
 } from './shared-components'
 
 type UpdateState = 'idle' | 'checking' | 'up-to-date' | 'downloading' | 'downloaded' | 'error'
@@ -129,6 +130,7 @@ export function AboutTab(): React.ReactElement {
           <h3 className="text-lg font-bold text-text-primary">CodeMax</h3>
           <p className="text-sm text-text-secondary">CodeMax 全能 Agent 工作台</p>
           <p className="mt-0.5 text-xs text-text-muted">版本 {appVersion} · MIT License</p>
+          <p className="mt-0.5 text-xs text-text-muted">{APP_COPYRIGHT}</p>
         </div>
       </div>
 
@@ -246,6 +248,10 @@ export function AboutTab(): React.ReactElement {
       <p className="pt-2 text-center text-xs text-text-muted">
         内容由 AI 生成，仅供参考
       </p>
+
+      <Divider />
+
+      <p className="pt-2 text-center text-xs text-text-muted">{APP_COPYRIGHT}</p>
     </div>
   )
 }

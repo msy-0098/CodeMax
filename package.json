@@ -60,6 +60,7 @@
   "build": {
     "appId": "com.codemax.agent",
     "productName": "CodeMax",
+    "copyright": "Copyright © 2026 Masenyu",
     "directories": {
       "output": "release"
     },

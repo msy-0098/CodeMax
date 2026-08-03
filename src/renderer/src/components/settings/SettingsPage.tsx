@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { ArrowLeft, Key, Cpu, Users, Wrench, Gauge, Info } from 'lucide-react'
 import { useStore } from '../../store/useStore'
 import type { AppSettings, TestResult, TransitionAnimationFile } from '../../../../shared/types'
-import { FALLBACK_SETTINGS, type TabId, type TestState } from './shared-components'
+import { FALLBACK_SETTINGS, APP_COPYRIGHT, type TabId, type TestState } from './shared-components'
 import { ApiTab } from './ApiTab'
 import { ModelTab } from './ModelTab'
 import { AgentTab } from './AgentTab'
@@ -242,6 +242,11 @@ export function SettingsPage(): React.ReactElement | null {
           </div>
         </div>
       </div>
+
+      {/* 底部版权 — 所有设置页签统一显示 */}
+      <footer className="border-t border-border px-4 py-2 text-center text-xs text-text-muted">
+        {APP_COPYRIGHT}
+      </footer>
     </div>
   )
 }

@@ -3,6 +3,9 @@ import { Minus, Plus, ChevronDown, ExternalLink } from 'lucide-react'
 // 默认设置统一从 shared/defaults 引用，主进程与渲染进程共用单一数据源
 export { DEFAULT_SETTINGS as FALLBACK_SETTINGS } from '../../../../shared/defaults'
 
+// 应用版权信息 — 所有 UI 位置统一引用，保证内容一致
+export const APP_COPYRIGHT = 'Copyright ©️ 2026 Masenyu'
+
 // 主题颜色预设
 export const THEME_PRESETS: { name: string; value: string }[] = [
   { name: 'Indigo', value: '#6366f1' },
