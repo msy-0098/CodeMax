@@ -2,6 +2,7 @@ import { memo, useState, useEffect, useRef, useMemo, lazy, Suspense } from 'reac
 import { Check, ChevronDown, Copy, RotateCcw, Brain, Cpu, Search, Code2, PenTool, Loader2, FileText, Edit3, Pencil, FolderTree, SearchCode, Terminal, GitBranch, CheckCircle, FolderSearch, AlertTriangle } from 'lucide-react'
 import type { ChatMessage, StreamingSegment } from '../../../shared/types'
 import { MarkdownRenderer } from './MarkdownRenderer'
+import { useTypingReveal } from '../hooks/useTypingReveal'
 
 // 懒加载工具结果卡片 — 含 CodeBlock + InlineFileEdit，仅在展开工具结果时才需要
 const ToolResultCard = lazy(() => import('./shared/ToolResultCard').then(m => ({ default: m.ToolResultCard })))
@@ -392,6 +393,11 @@ export const MessageItem = memo(function MessageItem({
   onEditMessage,
   showToolResults = true
 }: MessageItemProps): React.ReactElement {
+  // 正文内容：流式期间用累积的 streamingContent，结束后用最终 message.content
+  const content = isStreaming ? streamingContent : message.content
+  // 打字机平滑显示 — 纯展示层，流式期间逐字 reveal
+  const revealedContent = useTypingReveal(content, isStreaming)
+
   const [copied, setCopied] = useState(false)
   const [showReasoning, setShowReasoning] = useState(false)
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null)
@@ -453,7 +459,6 @@ export const MessageItem = memo(function MessageItem({
 
   // 助手消息
   const reasoning = isStreaming ? streamingReasoning : message.reasoningContent
-  const content = isStreaming ? streamingContent : message.content
 
   // 确定是否按 segment 顺序渲染（多轮 Agent Loop 时）
   const segmentsToRender: StreamingSegment[] | null = (() => {
@@ -533,7 +538,7 @@ export const MessageItem = memo(function MessageItem({
             {/* 内容 */}
             <div className="overflow-x-auto">
               {content ? (
-                <MarkdownRenderer content={content} />
+                <MarkdownRenderer content={revealedContent} />
               ) : isStreaming && !reasoning ? (
                 <div className="flex items-center gap-1 py-2">
                   <span className="h-2 w-2 animate-bounce rounded-full bg-accent/60 [animation-delay:-0.3s]" />
