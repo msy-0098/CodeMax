@@ -7,5 +7,5 @@ export { callDeepSeekStream, streamChat, testConnection, toApiEffort } from './a
 export { agentLoop } from './agent-loop'
 export { runSupervisionCheck, needsCorrection, buildCorrectionMessage } from './supervisor'
 export type { SupervisionResult, AgentRoundSnapshot } from './supervisor'
-export { countTokens, countMessageTokens, isTokenizerReady } from './tokenizer'
+export { countTokens, countMessageTokens, isTokenizerReady, estimateTokens } from './tokenizer'
 export type { StreamHandlers, SingleCallResult } from './types'

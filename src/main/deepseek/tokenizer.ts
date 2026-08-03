@@ -227,3 +227,19 @@ export function countMessageTokens(
 export function isTokenizerReady(): boolean {
   return tokenizerData !== null
 }
+
+/**
+ * 跨服务商 token 估算：
+ * - deepseek：走本地 BPE 精确计数（失败时回退近似）
+ * - 其他：字符数/4 近似（API 返回的真实 usage 仍以响应为准）
+ */
+export function estimateTokens(text: string, providerId: string): number {
+  if (providerId === 'deepseek') {
+    try {
+      return countTokens(text)
+    } catch {
+      return Math.ceil(text.length / 4)
+    }
+  }
+  return Math.ceil(text.length / 4)
+}
