@@ -429,12 +429,12 @@ async function fetchLatestRelease(apiUrl: string, headers: Record<string, string
   }
 }
 
-/** 按当前平台选择匹配的发布资产：Windows→.exe，macOS→.dmg/.zip，Linux→.AppImage/.deb/.rpm；无匹配时回退首个资产 */
+/** 按当前平台选择匹配的发布资产：Windows→.exe，macOS→.dmg/.zip，Linux→.AppImage/.deb/.rpm；无匹配返回 undefined（避免误下载源码归档等非安装包资产） */
 function pickAssetForPlatform(assets?: ReleaseAsset[]): ReleaseAsset | undefined {
   const pattern = process.platform === 'win32' ? /\.exe$/i
     : process.platform === 'darwin' ? /\.(dmg|zip)$/i
     : /\.(AppImage|deb|rpm)$/i
-  return assets?.find((a) => pattern.test(a.name)) ?? assets?.[0]
+  return assets?.find((a) => pattern.test(a.name))
 }
 
 function extractVersionInfo(release: ReleaseInfo, currentVersion: string): {
@@ -447,11 +447,13 @@ function extractVersionInfo(release: ReleaseInfo, currentVersion: string): {
   const latestVersion = release.tag_name.replace(/^v/, '')
   if (latestVersion === currentVersion) return null
   const asset = pickAssetForPlatform(release.assets)
+  // 无本平台安装包资产（如仅源码归档）时，该源不提供更新，避免下载到错误文件
+  if (!asset) return null
   return {
     latestVersion,
-    downloadUrl: asset?.browser_download_url ?? release.html_url,
-    fileName: asset?.name ?? `CodeMax-Setup-${latestVersion}.exe`,
-    fileSize: asset?.size ?? 0,
+    downloadUrl: asset.browser_download_url,
+    fileName: asset.name,
+    fileSize: asset.size,
     releaseUrl: release.html_url
   }
 }
