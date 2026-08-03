@@ -158,11 +158,14 @@ export default function App(): React.ReactElement {
   // 应用明暗主题
   useEffect(() => {
     const root = document.documentElement
+    root.classList.add('theme-transition')
     if (settings?.theme === 'light') {
       root.classList.remove('dark')
     } else {
       root.classList.add('dark')
     }
+    const t = setTimeout(() => root.classList.remove('theme-transition'), 300)
+    return () => clearTimeout(t)
   }, [settings?.theme])
 
   // 启动动画完成回调 — useCallback 保证引用稳定，避免 StartupAnimation 内定时器被重置
