@@ -18,8 +18,11 @@ describe('getActiveProvider / getModelLabel', () => {
   it('格式为 服务商名 · 模型', () => {
     expect(getModelLabel(base)).toBe('OpenAI · gpt-4o')
   })
-  it('无 providers 时回退 DeepSeek · model', () => {
-    expect(getModelLabel({ model: 'deepseek-v4-pro' } as AppSettings)).toBe('DeepSeek · deepseek-v4-pro')
+  it('无 providers 时仅显示模型名', () => {
+    expect(getModelLabel({ model: 'gpt-4o' } as AppSettings)).toBe('gpt-4o')
+  })
+  it('model 为空时显示未知模型', () => {
+    expect(getModelLabel({} as AppSettings)).toBe('未知模型')
   })
   it('找不到服务商时回退 model', () => {
     expect(getModelLabel({ providers: base.providers, activeProviderId: 'missing', model: 'x' } as AppSettings)).toBe('x')

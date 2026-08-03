@@ -5,19 +5,16 @@ import { loadSettings } from '../store'
 import { toolRegistry } from '../tools'
 import { modeToolNames, ensureModeToolsLoaded } from '../tools/lazy-registry'
 import { normalizeToolSchemas } from '../../shared/cache'
-import { PROVIDER_PRESETS, buildPresetProvider } from '../../shared/providers'
 import * as os from 'os'
 
 // 当前流式请求的 AbortController（用于取消）
 let currentController: AbortController | null = null
 
-/** 从 settings 解析当前激活的服务商（容错回退：deepseek 预设） */
+/** 从 settings 解析当前激活的服务商；未配置时返回空配置，由调用方优雅报错 */
 function getActiveProvider(settings: Awaited<ReturnType<typeof loadSettings>>): ModelProvider {
   const list = settings.providers ?? []
-  const active = list.find((p) => p.id === settings.activeProviderId)
-  if (active) return active
-  const preset = PROVIDER_PRESETS.find((p) => p.id === 'deepseek') ?? PROVIDER_PRESETS[0]
-  return buildPresetProvider(preset, settings.apiKey)
+  return list.find((p) => p.id === settings.activeProviderId) ??
+    { id: '', name: '', kind: 'custom', baseUrl: '', apiKey: '', models: [], supportsThinking: false }
 }
 
 export function registerChatHandlers(): void {

@@ -36,8 +36,8 @@ export async function agentLoop(
 ): Promise<void> {
   const { onChunk, signal } = handlers
 
-  if (!apiKey) {
-    onChunk({ done: true, error: '未配置 API Key，请前往设置填写你的 API 密钥。' })
+  if (!apiKey || !baseUrl || !request.model) {
+    onChunk({ done: true, error: '请先在设置中配置模型服务商（API Key / Base URL / 模型）' })
     return
   }
 

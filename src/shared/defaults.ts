@@ -1,5 +1,4 @@
 import type { AppSettings } from './types'
-import { PROVIDER_PRESETS, buildPresetProvider } from './providers'
 
 /**
  * 应用默认设置 — 主进程与渲染进程共用的单一数据源。
@@ -10,10 +9,10 @@ import { PROVIDER_PRESETS, buildPresetProvider } from './providers'
  */
 export const DEFAULT_SETTINGS: AppSettings = {
   apiKey: '',
-  baseUrl: 'https://api.deepseek.com/v1',
-  providers: PROVIDER_PRESETS.map((p) => buildPresetProvider(p)),
-  activeProviderId: 'deepseek',
-  model: 'deepseek-v4-pro',
+  baseUrl: '',
+  providers: [],
+  activeProviderId: '',
+  model: '',
   thinkingMode: true,
   reasoningEffort: 'high',
   temperature: 0.7,
@@ -26,7 +25,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   recentProjects: [],
 
   // ---- 主子 Agent 设置 ----
-  subAgentModel: 'deepseek-v4-flash',
+  subAgentModel: '',
   subAgentMaxTokens: 393216,
   subAgentTemperature: 0.7,
   subAgentTimeout: 60,

@@ -38,14 +38,17 @@ export function ModelSelector(): React.ReactElement {
         }`}
       >
         <Cpu size={11} />
-        <span className="max-w-[140px] truncate">{display || '选择模型'}</span>
+        <span className="max-w-[140px] truncate">{display || (providers.length === 0 ? '未配置模型' : '选择模型')}</span>
         <ChevronDown size={10} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {/* 下拉面板：服务商列表 → 展开模型列表 */}
       {open && (
         <div className="absolute bottom-full right-0 mb-2 min-w-[240px] max-h-[60vh] overflow-y-auto rounded-xl border border-border-subtle bg-bg-elevated shadow-glass animate-fade-scale">
-          {providers.map((p) => {
+          {providers.length === 0 ? (
+            <div className="px-3 py-4 text-center text-[12px] text-text-muted">尚未配置模型服务商，请前往设置</div>
+          ) : (
+            providers.map((p) => {
             const isActive = p.id === activeProvider?.id
             const isExpanded = expanded === p.id
             return (
@@ -82,7 +85,8 @@ export function ModelSelector(): React.ReactElement {
                   ))}
               </div>
             )
-          })}
+          })
+          )}
         </div>
       )}
     </div>
