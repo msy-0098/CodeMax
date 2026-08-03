@@ -84,15 +84,23 @@ export function ApiTab({
             </button>
           </div>
         </div>
-        <a
-          href="https://platform.deepseek.com/api_keys"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-2 inline-flex items-center gap-1 text-xs text-accent hover:text-accent-hover"
-        >
-          <ExternalLink size={11} />
-          前往 DeepSeek 平台获取 API Key
-        </a>
+        {(() => {
+          const activeProvider = (local.providers ?? []).find((p) => p.id === local.activeProviderId)
+          const keyUrl = activeProvider?.id === 'deepseek' ? 'https://platform.deepseek.com/api_keys' : ''
+          return keyUrl ? (
+            <a
+              href={keyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center gap-1 text-xs text-accent hover:text-accent-hover"
+            >
+              <ExternalLink size={11} />
+              前往 {activeProvider?.name ?? '所选服务商'} 平台获取 API Key
+            </a>
+          ) : (
+            <p className="mt-2 text-xs text-text-muted">API Key 由所选服务商提供，请前往其开放平台申请</p>
+          )
+        })()}
       </div>
 
       {/* 连接测试 */}
@@ -128,7 +136,7 @@ export function ApiTab({
         )}
 
         {testState === 'testing' && (
-          <p className="text-xs text-text-muted">正在向 DeepSeek API 发送测试请求...</p>
+          <p className="text-xs text-text-muted">正在发送测试请求...</p>
         )}
 
         {(testState === 'success' || testState === 'error') && testResult && (
@@ -167,7 +175,7 @@ export function ApiTab({
           className="w-full rounded-lg border border-border bg-bg-elevated px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none"
         />
         <p className="mt-1.5 text-xs text-text-muted">
-          DeepSeek API 基础地址，兼容 OpenAI 格式，一般无需修改
+          所选服务商 API 基础地址，兼容 OpenAI 格式，一般无需修改
         </p>
       </div>
     </div>

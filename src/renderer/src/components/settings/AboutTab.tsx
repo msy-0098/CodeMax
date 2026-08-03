@@ -198,13 +198,13 @@ export function AboutTab(): React.ReactElement {
       </div>
 
       <Divider />
-      <SectionTitle title="CodeMax 模型" desc="由深度求索于 2026 年 4 月发布的新一代旗舰大模型" />
+      <SectionTitle title="模型支持" desc="CodeMax 兼容 OpenAI 协议，可接入多家主流服务商（DeepSeek / OpenAI / GLM / Kimi / Qwen / 硅基流动等）及任意自定义端点" />
 
       <div className="grid grid-cols-2 gap-2.5">
-        <InfoCard label="上下文窗口" value="1M tokens" />
-        <InfoCard label="架构" value="MoE 稀疏注意力" />
-        <InfoCard label="V4-Pro 参数" value="1.6T / 49B 激活" />
-        <InfoCard label="V4-Flash 参数" value="284B / 13B 激活" />
+        <InfoCard label="接入方式" value="OpenAI 兼容 API" />
+        <InfoCard label="自定义端点" value="任意兼容服务" />
+        <InfoCard label="思考链" value="按服务商能力启用" />
+        <InfoCard label="模型切换" value="服务商内多模型" />
       </div>
 
       <Divider />
@@ -239,9 +239,8 @@ export function AboutTab(): React.ReactElement {
       {/* 链接 */}
       <SectionTitle title="相关链接" />
       <div className="space-y-2">
-        <LinkRow href="https://platform.deepseek.com" label="DeepSeek 开放平台" />
-        <LinkRow href="https://api-docs.deepseek.com" label="DeepSeek API 文档" />
-        <LinkRow href="https://chat.deepseek.com" label="DeepSeek 在线体验" />
+        <LinkRow href="https://github.com/msy-0098/CodeMax" label="GitHub 仓库" />
+        <LinkRow href="https://gitee.com/mason-rain/code-max" label="Gitee 仓库" />
       </div>
 
       <p className="pt-2 text-center text-xs text-text-muted">

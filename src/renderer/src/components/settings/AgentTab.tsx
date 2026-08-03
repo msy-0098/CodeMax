@@ -21,7 +21,6 @@ import type { AppSettings, ModelId, ReasoningEffort } from '../../../../shared/t
 import {
   SectionTitle,
   Divider,
-  ModelCard,
   ToggleRow,
   CollapsibleSection,
   NumberInputRow
@@ -170,27 +169,56 @@ export function AgentTab({
 
       <Divider />
 
-      <SectionTitle title="子 Agent 模型" desc="子 Agent（专家）发起独立 API 调用时使用的模型，建议用 Flash 降低成本" />
+      <SectionTitle title="子 Agent 模型" desc="子 Agent（专家）发起独立 API 调用时使用的模型，默认跟随主模型，可单独指定" />
 
-      <div className="grid grid-cols-2 gap-3">
-        <ModelCard
-          active={(local.subAgentModel ?? 'deepseek-v4-flash') === 'deepseek-v4-pro'}
-          onClick={() => update({ subAgentModel: 'deepseek-v4-pro' as ModelId })}
-          icon={<Cpu size={18} />}
-          title="V4-Pro"
-          subtitle="旗舰版"
-          specs={['深度推理', '高质量']}
-          desc="子 Agent 回复质量更高，但耗时和成本更大"
-        />
-        <ModelCard
-          active={(local.subAgentModel ?? 'deepseek-v4-flash') === 'deepseek-v4-flash'}
-          onClick={() => update({ subAgentModel: 'deepseek-v4-flash' as ModelId })}
-          icon={<Zap size={18} />}
-          title="V4-Flash"
-          subtitle="轻量版"
-          specs={['快速响应', '低成本']}
-          desc="子 Agent 回复更快更省，推荐默认选择"
-        />
+      <div className="space-y-2">
+        {(() => {
+          const activeProvider = (local.providers ?? []).find((p) => p.id === local.activeProviderId)
+          const subModels = activeProvider?.models ?? []
+          const followMain = !local.subAgentModel
+          return (
+            <>
+              <button
+                onClick={() => update({ subAgentModel: undefined })}
+                className={`flex w-full items-center justify-between rounded-lg border p-3 text-left transition-all ${
+                  followMain
+                    ? 'border-accent bg-accent/10'
+                    : 'border-border bg-bg-elevated hover:border-border-hover'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <Bot size={15} className={followMain ? 'text-accent' : 'text-text-muted'} />
+                  <span className="text-sm font-medium text-text-primary">跟随主模型</span>
+                </span>
+                <span className={`text-[10px] ${followMain ? 'text-accent' : 'text-text-muted'}`}>推荐默认</span>
+              </button>
+              {subModels.length === 0 ? (
+                <p className="text-xs text-text-muted">当前服务商暂无可用模型，请先在「模型与推理」中配置模型</p>
+              ) : (
+                subModels.map((m) => {
+                  const active = local.subAgentModel === m
+                  return (
+                    <button
+                      key={m}
+                      onClick={() => update({ subAgentModel: m as ModelId })}
+                      className={`flex w-full items-center justify-between rounded-lg border p-3 text-left transition-all ${
+                        active
+                          ? 'border-accent bg-accent/10'
+                          : 'border-border bg-bg-elevated hover:border-border-hover'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Cpu size={15} className={active ? 'text-accent' : 'text-text-muted'} />
+                        <span className="text-sm font-medium text-text-primary">{m}</span>
+                      </span>
+                      {active && <span className="text-[10px] text-accent">当前选择</span>}
+                    </button>
+                  )
+                })
+              )}
+            </>
+          )
+        })()}
       </div>
 
       <Divider />

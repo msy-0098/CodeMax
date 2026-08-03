@@ -15,7 +15,7 @@ function buildToolContext(settings: Awaited<ReturnType<typeof loadSettings>>, re
     baseUrl: settings.baseUrl,
     model: request.model,
     reasoningEffort: request.reasoningEffort,
-    subAgentModel: settings.subAgentModel ?? settings.model,
+    subAgentModel: settings.subAgentModel || settings.model,
     subAgentMaxTokens: 393216,
     subAgentTemperature: settings.subAgentTemperature ?? 0.7,
     subAgentTimeout: settings.subAgentTimeout ?? 60,
