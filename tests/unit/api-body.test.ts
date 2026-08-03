@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildRequestBody } from '../../src/main/deepseek/api'
+import { buildRequestBody } from '../../src/main/llm/api'
 
 const base = {
   model: 'gpt-4o',

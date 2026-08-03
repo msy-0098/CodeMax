@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseStreamChunk, shouldRetryWithoutStreamOptions } from '../../src/main/deepseek/stream-parse'
+import { parseStreamChunk, shouldRetryWithoutStreamOptions } from '../../src/main/llm/stream-parse'
 
 describe('parseStreamChunk 容错解析', () => {
   it('标准 OpenAI delta.content', () => {

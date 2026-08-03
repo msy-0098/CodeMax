@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { estimateTokens } from '../../src/main/deepseek/tokenizer'
+import { estimateTokens } from '../../src/main/llm/tokenizer'
 
 describe('estimateTokens', () => {
   it('非 deepseek 服务商按 字符数/4 近似', () => {

@@ -389,7 +389,7 @@ ipcMain.handle('memory:save', async (_event, mode: Mode, content: string) => {
 // ---------- 本地 BPE Tokenizer ----------
 ipcMain.handle('tokenizer:count', async (_event, text: string) => {
   try {
-    const { countTokens } = await import('./deepseek/tokenizer')
+    const { countTokens } = await import('./llm/tokenizer')
     return { success: true, count: countTokens(text) }
   } catch (e) {
     return { success: false, count: 0, error: (e as Error).message }
@@ -398,7 +398,7 @@ ipcMain.handle('tokenizer:count', async (_event, text: string) => {
 
 ipcMain.handle('tokenizer:countMessages', async (_event, messages: { role: string; content: string }[]) => {
   try {
-    const { countMessageTokens } = await import('./deepseek/tokenizer')
+    const { countMessageTokens } = await import('./llm/tokenizer')
     return { success: true, count: countMessageTokens(messages) }
   } catch (e) {
     return { success: false, count: 0, error: (e as Error).message }

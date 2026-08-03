@@ -87,7 +87,7 @@ const PRETOKENIZER_REGEX = new RegExp(
 function resolveTokenizerPath(): string {
   const candidates = [
     join(__dirname, 'tokenizer', 'tokenizer.json'),
-    join(process.cwd(), 'src', 'main', 'deepseek', 'tokenizer', 'tokenizer.json')
+    join(process.cwd(), 'src', 'main', 'llm', 'tokenizer', 'tokenizer.json')
   ]
   for (const p of candidates) {
     if (existsSync(p)) return p

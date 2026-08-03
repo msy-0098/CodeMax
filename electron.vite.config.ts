@@ -28,7 +28,7 @@ function copyStaticAssets() {
       }
 
       // DeepSeek tokenizer 词表
-      const tokenizerSrc = resolve(__dirname, 'src/main/deepseek/tokenizer')
+      const tokenizerSrc = resolve(__dirname, 'src/main/llm/tokenizer')
       const tokenizerDest = join(outBase, 'tokenizer')
       if (existsSync(tokenizerSrc)) {
         cpSync(tokenizerSrc, tokenizerDest, { recursive: true })

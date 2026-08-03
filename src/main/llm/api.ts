@@ -68,12 +68,12 @@ export function buildRequestBody(params: RequestBodyParams): Record<string, unkn
 // ---------- 底层：单次流式 API 调用（不含重试） ----------
 
 /**
- * callDeepSeekStreamOnce — 单次流式请求，不含重试逻辑
+ * callStreamOnce — 单次流式请求，不含重试逻辑
  *
  * emitted 标志：任何 reasoning/text/tool_call chunk 已发出则为 true。
- * 中断时由上层 callDeepSeekStream 决定是否重放。
+ * 中断时由上层 callStream 决定是否重放。
  */
-async function callDeepSeekStreamOnce(
+async function callStreamOnce(
   apiKey: string,
   baseUrl: string,
   model: string,
@@ -138,7 +138,7 @@ async function callDeepSeekStreamOnce(
     } catch { /* keep raw */ }
     // 聚合网关对 stream_options 兼容性差：400 且命中关键字时去掉该参数重试一次
     if (includeUsage && shouldRetryWithoutStreamOptions(response.status, errText)) {
-      return callDeepSeekStreamOnce(apiKey, baseUrl, model, messages, tools, thinkingMode, supportsThinking, reasoningEffort, temperature, maxTokens, handlers, emittedRef, false)
+      return callStreamOnce(apiKey, baseUrl, model, messages, tools, thinkingMode, supportsThinking, reasoningEffort, temperature, maxTokens, handlers, emittedRef, false)
     }
     return { finishReason: 'error', content: '', reasoningContent: '', toolCalls: [], error: `API 请求失败 (${response.status})：${errText || response.statusText}`, emitted: false }
   }
@@ -275,7 +275,7 @@ async function callDeepSeekStreamOnce(
 // ---------- 公开接口：带 emitted 标志 + 零输出重放的流式调用 ----------
 
 /**
- * callDeepSeekStream — C1 emitted 标志 + 零输出重放
+ * callStream — C1 emitted 标志 + 零输出重放
  *
  * 参考 Reasonix 的 streamWithReconnect：
  * - 维护 emitted 标志：任何 reasoning/text/tool_call chunk 已发出则为 true
@@ -283,7 +283,7 @@ async function callDeepSeekStreamOnce(
  * - 连接断开时：emitted=true → 上报错误，不重放（避免重复输出）
  * - 重放便宜是因为 prompt cache 命中
  */
-export async function callDeepSeekStream(
+export async function callStream(
   apiKey: string,
   baseUrl: string,
   model: string,
@@ -302,7 +302,7 @@ export async function callDeepSeekStream(
 
   for (let attempt = 0; attempt <= MAX_STREAM_RECONNECTS; attempt++) {
     const emittedRef = { value: false }
-    const result = await callDeepSeekStreamOnce(
+    const result = await callStreamOnce(
       apiKey, baseUrl, model, messages, tools,
       thinkingMode, supportsThinking, reasoningEffort, temperature, maxTokens,
       handlers, emittedRef
@@ -359,7 +359,7 @@ export async function streamChat(
     return
   }
 
-  const result = await callDeepSeekStream(
+  const result = await callStream(
     apiKey,
     baseUrl,
     request.model,

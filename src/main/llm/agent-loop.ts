@@ -3,7 +3,7 @@ import { toolRegistry } from '../tools'
 import { isRecording, appendStep } from '../SkillStore'
 import { getCheckpointStore } from '../CheckpointStore'
 import { evaluate, extractSubject, getConfigForMode, YOLO_CONFIG, SAFE_CONFIG } from '../Permission'
-import { callDeepSeekStream } from './api'
+import { callStream } from './api'
 import { agentConfig, truncateToolResult, sanitizeContent } from './context'
 import type { StreamHandlers } from './types'
 import { ContextManager } from '../../shared/cache'
@@ -94,7 +94,7 @@ export async function agentLoop(
     const prevShape = lastPrefixShape ?? prefixShape
 
     // 单次 API 调用
-    const result = await callDeepSeekStream(
+    const result = await callStream(
       apiKey,
       baseUrl,
       request.model,
@@ -347,7 +347,7 @@ export async function agentLoop(
     role: 'user',
     content: '你已经完成了所有工具调用。请基于已有信息直接给出最终回答，不要再调用任何工具。'
   })
-  const finalResult = await callDeepSeekStream(
+  const finalResult = await callStream(
     apiKey, baseUrl, request.model, messages, undefined,
     request.thinkingMode, request.reasoningEffort, request.supportsThinking ?? true, request.temperature, request.maxTokens, handlers
   )

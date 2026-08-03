@@ -1,5 +1,5 @@
 import { ipcMain, BrowserWindow } from 'electron'
-import { streamChat, agentLoop, testConnection, configureAgentLoop } from '../deepseek'
+import { streamChat, agentLoop, testConnection, configureAgentLoop } from '../llm'
 import type { ChatRequest, StreamChunk, ToolContext, ApiMessage, ModelProvider } from '../../shared/types'
 import { loadSettings } from '../store'
 import { toolRegistry } from '../tools'
