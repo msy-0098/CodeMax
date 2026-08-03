@@ -102,6 +102,7 @@ export async function agentLoop(
       tools,
       request.thinkingMode,
       request.reasoningEffort,
+      request.supportsThinking ?? true,
       request.temperature,
       request.maxTokens,
       handlers
@@ -181,7 +182,7 @@ export async function agentLoop(
           toolCalls: result.toolCalls.map(tc => ({ name: tc.name, args: JSON.stringify(tc.arguments).slice(0, 300) })),
           toolResults: []
         }
-        supervisionPromise = runSupervisionCheck(apiKey, baseUrl, request.model, request.reasoningEffort, snapshot, signal)
+        supervisionPromise = runSupervisionCheck(apiKey, baseUrl, request.model, request.reasoningEffort, request.supportsThinking ?? true, snapshot, signal)
       }
 
       // 权限引擎 — 按规则评估每个工具调用：allow / ask / deny
@@ -348,7 +349,7 @@ export async function agentLoop(
   })
   const finalResult = await callDeepSeekStream(
     apiKey, baseUrl, request.model, messages, undefined,
-    request.thinkingMode, request.reasoningEffort, request.temperature, request.maxTokens, handlers
+    request.thinkingMode, request.reasoningEffort, request.supportsThinking ?? true, request.temperature, request.maxTokens, handlers
   )
   if (finalResult.finishReason === 'error') {
     onChunk({ done: true, error: finalResult.error })

@@ -88,6 +88,7 @@ export async function runSupervisionCheck(
   baseUrl: string,
   model: string,
   reasoningEffort: ReasoningEffort,
+  supportsThinking: boolean,
   snapshot: AgentRoundSnapshot,
   signal?: AbortSignal
 ): Promise<SupervisionResult | null> {
@@ -140,8 +141,8 @@ ${toolResultSummary}
     temperature: 0.3
   }
 
-  // 监督 Agent 也使用思考模式（如果主 Agent 使用了）
-  if (reasoningEffort !== 'off') {
+  // 监督 Agent 也使用思考模式 — 仅当服务商支持（如 DeepSeek）
+  if (supportsThinking && reasoningEffort !== 'off') {
     body.enable_thinking = true
     body.reasoning_effort = toApiEffort(reasoningEffort)
   }
