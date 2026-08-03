@@ -3,7 +3,7 @@ import { errorResult, collectToolCalls, sanitizeContent } from './context'
 import type { StreamHandlers, SingleCallResult } from './types'
 import { normaliseUsage, normalizeToolSchemas } from '../../shared/cache'
 import type { NormalizedUsage } from '../../shared/cache'
-import { parseStreamChunk } from './stream-parse'
+import { parseStreamChunk, shouldRetryWithoutStreamOptions } from './stream-parse'
 
 // ---------- 常量 ----------
 
@@ -85,7 +85,8 @@ async function callDeepSeekStreamOnce(
   temperature: number,
   maxTokens: number,
   handlers: StreamHandlers,
-  emittedRef: { value: boolean }
+  emittedRef: { value: boolean },
+  includeUsage: boolean = true
 ): Promise<SingleCallResult> {
   const { onChunk, signal } = handlers
 
@@ -105,7 +106,8 @@ async function callDeepSeekStreamOnce(
     reasoningEffort,
     supportsThinking,
     temperature,
-    maxTokens
+    maxTokens,
+    includeUsage
   })
 
   let response: Response
@@ -134,6 +136,10 @@ async function callDeepSeekStreamOnce(
       const errJson = JSON.parse(errText)
       errText = errJson?.error?.message || errText
     } catch { /* keep raw */ }
+    // 聚合网关对 stream_options 兼容性差：400 且命中关键字时去掉该参数重试一次
+    if (includeUsage && shouldRetryWithoutStreamOptions(response.status, errText)) {
+      return callDeepSeekStreamOnce(apiKey, baseUrl, model, messages, tools, thinkingMode, supportsThinking, reasoningEffort, temperature, maxTokens, handlers, emittedRef, false)
+    }
     return { finishReason: 'error', content: '', reasoningContent: '', toolCalls: [], error: `API 请求失败 (${response.status})：${errText || response.statusText}`, emitted: false }
   }
 

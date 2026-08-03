@@ -45,3 +45,12 @@ export function parseStreamChunk(json: unknown): ParsedChunk | null {
   if (j.usage) out.usage = j.usage
   return out
 }
+
+const STREAM_OPTIONS_ERROR_KEYWORDS = ['stream_options', 'include_usage', 'unknown parameter']
+
+/** 400 错误是否为 stream_options 兼容问题（可去掉该参数重试一次） */
+export function shouldRetryWithoutStreamOptions(status: number, errorText: string): boolean {
+  if (status !== 400) return false
+  const lower = errorText.toLowerCase()
+  return STREAM_OPTIONS_ERROR_KEYWORDS.some((k) => lower.includes(k))
+}

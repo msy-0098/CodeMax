@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseStreamChunk } from '../../src/main/deepseek/stream-parse'
+import { parseStreamChunk, shouldRetryWithoutStreamOptions } from '../../src/main/deepseek/stream-parse'
 
 describe('parseStreamChunk 容错解析', () => {
   it('标准 OpenAI delta.content', () => {
@@ -43,5 +43,16 @@ describe('parseStreamChunk 容错解析', () => {
   it('非法 JSON 返回 null', () => {
     expect(parseStreamChunk('not-json')).toBeNull()
     expect(parseStreamChunk(null)).toBeNull()
+  })
+})
+
+describe('shouldRetryWithoutStreamOptions', () => {
+  it('400 + stream_options 关键字 → true', () => {
+    expect(shouldRetryWithoutStreamOptions(400, 'stream_options is not supported')).toBe(true)
+    expect(shouldRetryWithoutStreamOptions(400, "Unknown parameter: 'include_usage'")).toBe(true)
+  })
+  it('非 400 或无关错误 → false', () => {
+    expect(shouldRetryWithoutStreamOptions(500, 'stream_options')).toBe(false)
+    expect(shouldRetryWithoutStreamOptions(400, 'rate limit exceeded')).toBe(false)
   })
 })
