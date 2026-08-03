@@ -3,6 +3,7 @@ import { errorResult, collectToolCalls, sanitizeContent } from './context'
 import type { StreamHandlers, SingleCallResult } from './types'
 import { normaliseUsage, normalizeToolSchemas } from '../../shared/cache'
 import type { NormalizedUsage } from '../../shared/cache'
+import { parseStreamChunk } from './stream-parse'
 
 // ---------- 常量 ----------
 
@@ -175,41 +176,39 @@ async function callDeepSeekStreamOnce(
         }
 
         try {
-          const json = JSON.parse(data)
-          const choice = json.choices?.[0]
-          const delta = choice?.delta
+          const parsed = parseStreamChunk(JSON.parse(data))
 
           // 文本内容
-          if (delta?.content) {
-            content += delta.content
+          if (parsed?.content) {
+            content += parsed.content
             emittedRef.value = true
-            onChunk({ content: delta.content })
+            onChunk({ content: parsed.content })
           }
           // 思考链
-          if (delta?.reasoning_content) {
-            reasoningContent += delta.reasoning_content
+          if (parsed?.reasoningContent) {
+            reasoningContent += parsed.reasoningContent
             emittedRef.value = true
-            onChunk({ reasoningContent: delta.reasoning_content })
+            onChunk({ reasoningContent: parsed.reasoningContent })
           }
 
           // 工具调用增量（流式累积）
-          if (delta?.tool_calls) {
+          if (parsed?.toolCalls) {
             emittedRef.value = true
-            for (const tc of delta.tool_calls) {
-              const idx = tc.index ?? 0
+            for (const tc of parsed.toolCalls) {
+              const idx = tc.index
               if (!toolCallsAcc.has(idx)) {
                 toolCallsAcc.set(idx, { id: tc.id ?? '', name: '', arguments: '' })
               }
               const acc = toolCallsAcc.get(idx)!
               if (tc.id) acc.id = tc.id
-              if (tc.function?.name) acc.name += tc.function.name
-              if (tc.function?.arguments) acc.arguments += tc.function.arguments
+              if (tc.name) acc.name += tc.name
+              if (tc.arguments) acc.arguments += tc.arguments
             }
           }
 
           // usage — D3 normaliseUsage 双形态归一化
-          if (json.usage) {
-            normalizedUsage = normaliseUsage(json.usage)
+          if (parsed?.usage) {
+            normalizedUsage = normaliseUsage(parsed.usage)
             onChunk({
               usage: {
                 promptTokens: normalizedUsage.promptTokens,
@@ -222,8 +221,8 @@ async function callDeepSeekStreamOnce(
           }
 
           // finish_reason
-          if (choice?.finish_reason) {
-            const fr = choice.finish_reason
+          if (parsed?.finishReason) {
+            const fr = parsed.finishReason
             const tcArray = collectToolCalls(toolCallsAcc)
 
             if (fr === 'tool_calls' || tcArray.length > 0) {
@@ -242,6 +241,17 @@ async function callDeepSeekStreamOnce(
       }
     }
     // 流自然结束（无 finish_reason）
+    // 网关忽略 stream 时，剩余 buffer 可能是完整 JSON
+    if (!content && buffer.trim()) {
+      try {
+        const parsed = parseStreamChunk(JSON.parse(buffer.trim()))
+        if (parsed?.content) {
+          content += parsed.content
+          emittedRef.value = true
+          onChunk({ content: parsed.content })
+        }
+      } catch { /* ignore */ }
+    }
     const tcArray = collectToolCalls(toolCallsAcc)
     if (tcArray.length > 0) {
       return { finishReason: 'tool_calls', content, reasoningContent, toolCalls: tcArray, usage: normalizedUsage, emitted: emittedRef.value }
