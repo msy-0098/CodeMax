@@ -17,6 +17,49 @@ export function toApiEffort(effort: ReasoningEffort): 'off' | 'high' | 'max' {
   return effort === 'ultra' ? 'max' : effort
 }
 
+export interface RequestBodyParams {
+  model: string
+  messages: { role: string; content: string; tool_calls?: unknown; tool_call_id?: string; reasoning_content?: string }[]
+  tools?: ToolDefinition[] | undefined
+  thinkingMode: boolean
+  reasoningEffort: ReasoningEffort
+  supportsThinking: boolean
+  temperature: number
+  maxTokens: number
+}
+
+/** 构造 /chat/completions 请求体 — 纯函数便于单测 */
+export function buildRequestBody(params: RequestBodyParams): Record<string, unknown> {
+  const { model, messages, tools, thinkingMode, reasoningEffort, supportsThinking, temperature, maxTokens } = params
+  const body: Record<string, unknown> = {
+    model,
+    messages,
+    stream: true,
+    max_tokens: maxTokens,
+    stream_options: { include_usage: true }
+  }
+
+  // A4 工具 schema 字典序归一化排序 — 保持 tools JSON 字节稳定，避免破坏缓存前缀
+  if (tools && tools.length > 0) {
+    const sortedTools = normalizeToolSchemas(tools)
+    body.tools = sortedTools.map((t) => ({
+      type: 'function',
+      function: { name: t.name, description: t.description, parameters: t.parameters }
+    }))
+    body.tool_choice = 'auto'
+  }
+
+  // 仅 DeepSeek 系列支持思考链专属参数；其他服务商一律标准 OpenAI 格式
+  if (supportsThinking && thinkingMode && reasoningEffort !== 'off') {
+    body.enable_thinking = true
+    body.reasoning_effort = toApiEffort(reasoningEffort)
+  } else {
+    body.temperature = temperature
+  }
+
+  return body
+}
+
 // ---------- 底层：单次流式 API 调用（不含重试） ----------
 
 /**
@@ -32,6 +75,7 @@ async function callDeepSeekStreamOnce(
   messages: { role: string; content: string; tool_calls?: unknown; tool_call_id?: string; reasoning_content?: string }[],
   tools: ToolDefinition[] | undefined,
   thinkingMode: boolean,
+  supportsThinking: boolean,
   reasoningEffort: ReasoningEffort,
   temperature: number,
   maxTokens: number,
@@ -48,34 +92,16 @@ async function callDeepSeekStreamOnce(
     content: sanitizeContent(m.content)
   }))
 
-  const body: Record<string, unknown> = {
+  const body = buildRequestBody({
     model,
     messages: sanitizedMessages,
-    stream: true,
-    max_tokens: maxTokens,
-    stream_options: { include_usage: true }
-  }
-
-  // A4 工具 schema 字典序归一化排序 — 保持 tools JSON 字节稳定，避免破坏缓存前缀
-  if (tools && tools.length > 0) {
-    const sortedTools = normalizeToolSchemas(tools)
-    body.tools = sortedTools.map((t) => ({
-      type: 'function',
-      function: {
-        name: t.name,
-        description: t.description,
-        parameters: t.parameters
-      }
-    }))
-    body.tool_choice = 'auto'
-  }
-
-  if (!thinkingMode || reasoningEffort === 'off') {
-    body.temperature = temperature
-  } else {
-    body.enable_thinking = true
-    body.reasoning_effort = toApiEffort(reasoningEffort)
-  }
+    tools,
+    thinkingMode,
+    reasoningEffort,
+    supportsThinking,
+    temperature,
+    maxTokens
+  })
 
   let response: Response
   try {
@@ -245,6 +271,7 @@ export async function callDeepSeekStream(
   tools: ToolDefinition[] | undefined,
   thinkingMode: boolean,
   reasoningEffort: ReasoningEffort,
+  supportsThinking: boolean = true,
   temperature: number,
   maxTokens: number,
   handlers: StreamHandlers
@@ -257,7 +284,7 @@ export async function callDeepSeekStream(
     const emittedRef = { value: false }
     const result = await callDeepSeekStreamOnce(
       apiKey, baseUrl, model, messages, tools,
-      thinkingMode, reasoningEffort, temperature, maxTokens,
+      thinkingMode, supportsThinking, reasoningEffort, temperature, maxTokens,
       handlers, emittedRef
     )
 
@@ -320,6 +347,7 @@ export async function streamChat(
     undefined, // 无工具
     request.thinkingMode,
     request.reasoningEffort,
+    request.supportsThinking ?? true,
     request.temperature,
     request.maxTokens,
     { onChunk, signal }
