@@ -23,7 +23,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url))
 function isGpuAccelerationEnabled(): boolean {
   try {
     const { readFileSync, existsSync } = require('fs')
-    const settingsPath = join(app.getPath('userData'), 'ximo-agent', 'settings.json')
+    const settingsPath = join(app.getPath('userData'), 'codemax', 'settings.json')
     if (!existsSync(settingsPath)) return true
     const raw = readFileSync(settingsPath, 'utf-8')
     const settings = JSON.parse(raw)
@@ -436,7 +436,7 @@ function extractVersionInfo(release: ReleaseInfo, currentVersion: string): {
   return {
     latestVersion,
     downloadUrl: asset?.browser_download_url ?? release.html_url,
-    fileName: asset?.name ?? `XimoAgent-Setup-${latestVersion}.exe`,
+    fileName: asset?.name ?? `CodeMax-Setup-${latestVersion}.exe`,
     fileSize: asset?.size ?? 0,
     releaseUrl: release.html_url
   }
@@ -452,8 +452,8 @@ ipcMain.handle('update:check', async () => {
 
     // 并行查询 GitHub 和 Gitee
     const [ghRelease, giteeRelease] = await Promise.all([
-      fetchLatestRelease('https://api.github.com/repos/ximo888ok-netizen/ximo-Agent/releases/latest', { 'User-Agent': 'ximo-agent' }),
-      fetchLatestRelease('https://gitee.com/api/v5/repos/ximo666ge/ximo-Agent/releases/latest', {})
+      fetchLatestRelease('https://api.github.com/repos/msy-0098/CodeMax/releases/latest', { 'User-Agent': 'codemax' }),
+      fetchLatestRelease('https://gitee.com/api/v5/repos/mason-rain/code-max/releases/latest', {})
     ])
 
     const ghInfo = ghRelease ? extractVersionInfo(ghRelease, currentVersion) : null
@@ -500,10 +500,10 @@ ipcMain.handle('update:download', async (event, downloadUrl: string, fallbackUrl
     const https = await import('https')
     const http = await import('http')
     const { app: electronApp } = await import('electron')
-    const downloadDir = join(electronApp.getPath('temp'), 'ximo-agent-update')
+    const downloadDir = join(electronApp.getPath('temp'), 'codemax-update')
     const { mkdir } = await import('fs/promises')
     await mkdir(downloadDir, { recursive: true })
-    const fileName = 'XimoAgent-Setup.exe'
+    const fileName = 'CodeMax-Setup.exe'
     const filePath = join(downloadDir, fileName)
 
     if (existsSync(filePath)) {

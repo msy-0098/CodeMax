@@ -1,4 +1,4 @@
-# Ximo-Agent
+# CodeMax
 
 > **DeepSeek-V4 驱动的全能 AI Agent 桌面工作台**  
 > 办公 / 编程 / 设计 三模式 · 内嵌完整工具系统 · 技能录制与回放 · MCP 协议扩展  
@@ -35,8 +35,8 @@
 
 预构建安装包可从以下渠道下载，双击运行后按向导完成安装：
 
-- [GitHub Releases](https://github.com/ximo888ok-netizen/ximo-Agent/releases)
-- [Gitee Releases](https://gitee.com/ximo666ge/ximo-Agent/releases)
+- [GitHub Releases](https://github.com/msy-0098/CodeMax/releases)
+- [Gitee Releases](https://gitee.com/mason-rain/code-max/releases)
 
 **系统要求：** Windows x64（macOS / Linux 支持有限）
 
@@ -314,7 +314,7 @@ AI 专家激活后自动保存为技能：
 支持挂载外部 MCP 服务器扩展工具能力：
 - **传输方式**：stdio（本地进程）、SSE（Server-Sent Events）、HTTP
 - **配置格式兼容**：Cursor / Claude Code / Cline / Windsurf 等主流客户端
-- **配置持久化**：存储于 `%APPDATA%/ximo-agent/mcp-config.json`
+- **配置持久化**：存储于 `%APPDATA%/codemax/mcp-config.json`
 - **按需加载**：MCP 工具动态注册到 toolRegistry
 
 ---
@@ -361,7 +361,7 @@ Windows 上强制启用 GPU 硬件加速（可在设置中关闭）：
 ## 目录结构
 
 ```
-ximo-agent/
+codemax/
 ├── build/                         # 构建资源（图标等）
 ├── docs/                          # 设计文档
 │   ├── CONVERSATION_TYPES_AND_FLOW.md
@@ -512,7 +512,7 @@ npm run gen-previews       # 重新生成 UI 组件预览
 ## 配置与约定
 
 - 行为规范：见 [AGENTS.md](AGENTS.md)（编码前必读）
-- 数据存储：`%APPDATA%/ximo-agent/`（Windows）
+- 数据存储：`%APPDATA%/codemax/`（Windows）
   - `settings.json` — 应用设置
   - `conversations.json` — 会话数据（500ms 防抖写入）
   - `memory/` — 各模式记忆文件
