@@ -86,7 +86,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
   // ---- 开屏动画 ----
   startupAnimationEnabled: true,
-  startupText: 'CodeMax',
+  startupText: 'CODEMAX',
   startupTextSize: 76,
   startupStrokeDuration: 460,
   startupFontFamily: "'Dancing Script', cursive",

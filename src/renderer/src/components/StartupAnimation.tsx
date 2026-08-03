@@ -200,7 +200,8 @@ export function StartupAnimation({
     'customTransitionAnimation'
   >
 }): React.ReactElement {
-  const text = config?.startupText ?? 'CodeMax'
+  // 开屏品牌文字固定为 CODEMAX，不可修改
+  const text = 'CODEMAX'
   const fontSize = config?.startupTextSize ?? 76
   const strokeDuration = config?.startupStrokeDuration ?? 460
   const fontFamily = config?.startupFontFamily ?? "'Dancing Script', cursive"
@@ -297,8 +298,9 @@ export function StartupAnimation({
           {chars.map((ch, i) => (
             <text
               key={i}
-              x={15 + i * 36}
+              x={220 + (i - (chars.length - 1) / 2) * 36}
               y={105}
+              textAnchor="middle"
               fontFamily={fontFamily}
               fontSize={fontSize}
               fontWeight="700"

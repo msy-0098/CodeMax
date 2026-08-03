@@ -228,23 +228,6 @@ export function AppearanceTab({
 
         {(local.startupAnimationEnabled ?? true) && (
           <>
-            {/* 开屏文字 */}
-            <div className="py-2">
-              <div className="mb-2 flex items-center gap-2">
-                <Type size={15} className="text-text-muted" />
-                <label className="text-sm font-medium text-text-primary">开屏文字</label>
-              </div>
-              <input
-                type="text"
-                value={local.startupText ?? 'CodeMax'}
-                onChange={(e) => update({ startupText: e.target.value })}
-                placeholder="CodeMax"
-                maxLength={30}
-                className="w-full rounded-md border border-border bg-bg-elevated px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
-              />
-              <p className="mt-1 text-xs text-text-muted">启动时逐字描边的文字，建议 3~15 个字符</p>
-            </div>
-
             <NumberInputRow
               icon={<Type size={15} />}
               label="文字大小"
