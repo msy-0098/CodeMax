@@ -1,19 +1,30 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { streamChat, agentLoop, testConnection, configureAgentLoop } from '../deepseek'
-import type { ChatRequest, StreamChunk, ToolContext, ApiMessage } from '../../shared/types'
+import type { ChatRequest, StreamChunk, ToolContext, ApiMessage, ModelProvider } from '../../shared/types'
 import { loadSettings } from '../store'
 import { toolRegistry } from '../tools'
 import { modeToolNames, ensureModeToolsLoaded } from '../tools/lazy-registry'
 import { normalizeToolSchemas } from '../../shared/cache'
+import { PROVIDER_PRESETS, buildPresetProvider } from '../../shared/providers'
 import * as os from 'os'
 
 // 当前流式请求的 AbortController（用于取消）
 let currentController: AbortController | null = null
 
+/** 从 settings 解析当前激活的服务商（容错回退：deepseek 预设） */
+function getActiveProvider(settings: Awaited<ReturnType<typeof loadSettings>>): ModelProvider {
+  const list = settings.providers ?? []
+  const active = list.find((p) => p.id === settings.activeProviderId)
+  if (active) return active
+  const preset = PROVIDER_PRESETS.find((p) => p.id === 'deepseek') ?? PROVIDER_PRESETS[0]
+  return buildPresetProvider(preset, settings.apiKey)
+}
+
 export function registerChatHandlers(): void {
   // 流式聊天：渲染进程通过 invoke 触发，主进程逐块通过 send 回传
   ipcMain.handle('chat:start', async (event, request: ChatRequest) => {
     const settings = await loadSettings()
+    const provider = getActiveProvider(settings)
     currentController = new AbortController()
 
     const win = event.sender
@@ -146,8 +157,8 @@ export function registerChatHandlers(): void {
     try {
       if (allTools.length > 0) {
         const toolContext: ToolContext = {
-          apiKey: settings.apiKey,
-          baseUrl: settings.baseUrl,
+          apiKey: provider.apiKey,
+          baseUrl: provider.baseUrl,
           model: request.model,
           reasoningEffort: request.reasoningEffort,
           subAgentModel: settings.subAgentModel ?? settings.model,
@@ -175,9 +186,9 @@ export function registerChatHandlers(): void {
           mode: request.mode,
           requestUserInput: handlers.requestUserInput
         }
-        await agentLoop(settings.apiKey, settings.baseUrl, { ...request, messages: messagesWithEnv, tools: sortedTools }, handlers, toolContext, request.sessionId)
+        await agentLoop(provider.apiKey, provider.baseUrl, { ...request, messages: messagesWithEnv, tools: sortedTools, supportsThinking: provider.supportsThinking }, handlers, toolContext, request.sessionId)
       } else {
-        await streamChat(settings.apiKey, settings.baseUrl, { ...request, messages: messagesWithEnv }, handlers)
+        await streamChat(provider.apiKey, provider.baseUrl, { ...request, messages: messagesWithEnv, supportsThinking: provider.supportsThinking }, handlers)
       }
     } finally {
       // 会话结束后断开所有 MCP 连接
