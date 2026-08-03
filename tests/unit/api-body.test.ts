@@ -46,4 +46,33 @@ describe('buildRequestBody', () => {
     expect((body.tools as unknown[]).length).toBe(1)
     expect(body.tool_choice).toBe('auto')
   })
+
+  it('includeUsage=false 时不发送 stream_options', () => {
+    const body = buildRequestBody({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: 'hi' }],
+      tools: undefined,
+      thinkingMode: false,
+      reasoningEffort: 'medium',
+      supportsThinking: false,
+      temperature: 0.7,
+      maxTokens: 4096,
+      includeUsage: false
+    })
+    expect(body.stream_options).toBeUndefined()
+  })
+
+  it('includeUsage 默认发送 stream_options', () => {
+    const body = buildRequestBody({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: 'hi' }],
+      tools: undefined,
+      thinkingMode: false,
+      reasoningEffort: 'medium',
+      supportsThinking: false,
+      temperature: 0.7,
+      maxTokens: 4096
+    })
+    expect(body.stream_options).toEqual({ include_usage: true })
+  })
 })

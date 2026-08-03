@@ -26,17 +26,21 @@ export interface RequestBodyParams {
   supportsThinking: boolean
   temperature: number
   maxTokens: number
+  includeUsage?: boolean
 }
 
 /** 构造 /chat/completions 请求体 — 纯函数便于单测 */
 export function buildRequestBody(params: RequestBodyParams): Record<string, unknown> {
-  const { model, messages, tools, thinkingMode, reasoningEffort, supportsThinking, temperature, maxTokens } = params
+  const { model, messages, tools, thinkingMode, reasoningEffort, supportsThinking, temperature, maxTokens, includeUsage = true } = params
   const body: Record<string, unknown> = {
     model,
     messages,
     stream: true,
-    max_tokens: maxTokens,
-    stream_options: { include_usage: true }
+    max_tokens: maxTokens
+  }
+
+  if (includeUsage) {
+    body.stream_options = { include_usage: true }
   }
 
   // A4 工具 schema 字典序归一化排序 — 保持 tools JSON 字节稳定，避免破坏缓存前缀
