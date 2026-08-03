@@ -1,5 +1,5 @@
 /**
- * 将 logo.jpg 处理为四边圆角图标
+ * 将 CodeMax.png 处理为四边圆角图标
  *
  * 生成:
  *   build/icon.png     — 256×256 圆角 PNG（electron-builder 安装包图标）
@@ -33,7 +33,7 @@ function roundedMaskSVG(size) {
 }
 
 async function main() {
-  const inputPath = join(root, 'logo.jpg')
+  const inputPath = join(root, 'CodeMax.png')
   const outDir = join(root, 'build')
 
   console.log('[make-icon] 读取源图:', inputPath)
