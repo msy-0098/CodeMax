@@ -160,5 +160,5 @@ function ChatHeader({ mode, title, onPreview, onExport, hasContent }: { mode: Mo
 }
 
 function ErrorBanner({ message }: { message: string }): React.ReactElement {
-  return <div className="mx-4 mb-1 flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/8 px-3 py-2 text-sm text-red-400 backdrop-blur-sm"><span className="text-xs">⚠</span><span className="flex-1">{message}</span></div>
+  return <div className="mx-4 mb-1 flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/8 px-3 py-2 text-sm text-red-400"><span className="text-xs">⚠</span><span className="flex-1">{message}</span></div>
 }

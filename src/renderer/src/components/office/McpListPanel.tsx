@@ -261,7 +261,7 @@ export function McpListPanel(): React.ReactElement {
       {/* 导入弹窗 */}
       {showImport && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40"
           onClick={() => !importing && setShowImport(false)}
         >
           <div

@@ -129,7 +129,7 @@ function ToolCallCard({ tc }: { tc: { name: string; status: string; args?: strin
         </span>
       </div>
       {expanded && (tc.args || tc.result) && (
-        <div className="mt-1 rounded-xl border border-border-subtle bg-bg-surface/40 backdrop-blur-sm px-3 py-2 text-xs text-text-muted">
+        <div className="mt-1 rounded-xl border border-border-subtle bg-bg-surface px-3 py-2 text-xs text-text-muted">
           {tc.args && (
             <div className="mb-1">
               <span className="font-medium text-text-secondary">参数：</span>
@@ -333,7 +333,7 @@ function SegmentBlock({
     <>
       {/* 思考过程（可折叠） */}
       {segment.reasoning && (
-        <div className="mb-2 overflow-hidden rounded-xl border border-border-subtle bg-bg-surface/60 backdrop-blur-sm">
+        <div className="mb-2 overflow-hidden rounded-xl border border-border-subtle bg-bg-surface">
           <button
             onClick={onToggleReasoning}
             className="flex w-full items-center gap-2 px-3 py-2 text-xs text-text-secondary transition-colors hover:text-text-primary"
@@ -434,7 +434,7 @@ export const MessageItem = memo(function MessageItem({
         <div className="max-w-[80%] rounded-[22px] rounded-br-md bg-gradient-to-br from-accent to-accent-hover px-4 py-3 text-white shadow-lg shadow-accent/20 edge-light">
           {message.slashCommand && (
             <span
-              className="mb-1.5 inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-medium backdrop-blur-sm"
+              className="mb-1.5 inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-medium"
               title={message.slashCommand.systemHint}
             >
               {message.slashCommand.cmd.replace(/^\//, '')}
@@ -508,7 +508,7 @@ export const MessageItem = memo(function MessageItem({
           <>
             {/* 思考过程（可折叠） */}
             {reasoning && (
-              <div className="mb-2 overflow-hidden rounded-xl border border-border-subtle bg-bg-surface/60 backdrop-blur-sm">
+              <div className="mb-2 overflow-hidden rounded-xl border border-border-subtle bg-bg-surface">
                 <button
                   onClick={() => setShowReasoning(!showReasoning)}
                   className="flex w-full items-center gap-2 px-3 py-2 text-xs text-text-secondary transition-colors hover:text-text-primary"

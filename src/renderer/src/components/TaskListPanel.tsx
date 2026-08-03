@@ -34,7 +34,7 @@ export const TaskListPanel = memo(function TaskListPanel(): React.ReactElement |
 
   return (
     <div className="mx-auto max-w-4xl px-4">
-      <div className="mb-1.5 overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated/60 backdrop-blur-md transition-all duration-300 ease-out-quart animate-fade-scale">
+      <div className="mb-1.5 overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated transition-all duration-300 ease-out-quart animate-fade-scale">
         {/* 折叠头部条 */}
         <button
           onClick={toggleCollapsed}

@@ -13,7 +13,7 @@ export function ScreenshotPreview({ dataUrl, onClose }: ScreenshotPreviewProps):
   if (!dataUrl) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md animate-fade-in" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 animate-fade-in" onClick={onClose}>
       <div
         className="glass-panel relative mx-4 max-h-[90vh] max-w-[90vw] overflow-auto animate-fade-scale"
         onClick={(e) => e.stopPropagation()}

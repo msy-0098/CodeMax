@@ -725,7 +725,7 @@ export function EmbeddedBrowserPanel(): React.ReactElement {
 
       {/* 保存技能对话框 */}
       {showSaveDialog && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="ios-card w-72 p-4 animate-fade-scale">
             <h3 className="mb-3 text-sm font-semibold text-text-primary">保存技能</h3>
             <div className="space-y-2">

@@ -457,7 +457,7 @@ export function GlobalChatInput(): React.ReactElement {
 
         {/* 输入框区域 — 一体化融合风格 */}
         <div
-          className={`rounded-2xl border bg-bg-elevated/60 backdrop-blur-md transition-all duration-300 ease-out-quart ${
+          className={`rounded-2xl border bg-bg-elevated transition-all duration-300 ease-out-quart ${
             isStreaming
               ? 'beam-border border-accent/20'
               : isDragOver
@@ -483,7 +483,7 @@ export function GlobalChatInput(): React.ReactElement {
           {showFileMention && matchedFiles.length > 0 && (
             <div
               ref={fileMentionRef}
-              className="mx-4 mb-1 max-h-48 overflow-y-auto rounded-xl border border-border-subtle bg-bg-elevated/95 backdrop-blur-xl shadow-glass animate-scale-in"
+              className="mx-4 mb-1 max-h-48 overflow-y-auto rounded-xl border border-border-subtle bg-bg-elevated border-border shadow-sm animate-scale-in"
             >
               <div className="px-3 py-1.5 text-[10px] text-text-muted border-b border-border-subtle">
                 文件引用 — ↑↓ 导航，Enter/Tab 确认，Esc 取消

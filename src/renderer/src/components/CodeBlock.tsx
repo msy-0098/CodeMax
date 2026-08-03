@@ -56,7 +56,7 @@ export const CodeBlock = memo(function CodeBlock({ language, value }: CodeBlockP
   return (
     <div className="group relative my-3 overflow-hidden rounded-xl border border-border-subtle bg-[#0d1117] shadow-glass transition-all hover:border-border-hover">
       {/* 语言标签 + 复制按钮 */}
-      <div className="flex items-center justify-between border-b border-border-subtle bg-bg-elevated/60 backdrop-blur-sm px-3 py-1.5">
+      <div className="flex items-center justify-between border-b border-border-subtle bg-bg-elevated px-3 py-1.5">
         <span className="text-xs font-mono text-text-secondary">{language || 'text'}</span>
         <button
           onClick={handleCopy}

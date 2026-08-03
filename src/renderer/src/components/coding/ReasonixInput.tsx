@@ -55,7 +55,7 @@ export function ReasonixInput({
   return (
     <div className="border-t border-border-subtle glass px-4 py-3">
       {/* 输入框 */}
-      <div className="flex items-end gap-2 rounded-[22px] border border-border bg-bg-elevated/80 backdrop-blur-xl px-4 py-3 transition-all duration-300 ease-out-quart focus-within:border-accent/60 focus-within:shadow-glow">
+      <div className="flex items-end gap-2 rounded-[22px] border border-border bg-bg-elevated px-4 py-3 transition-all duration-300 ease-out-quart focus-within:border-accent/60 focus-within:shadow-glow">
         <textarea
           ref={textareaRef}
           value={text}

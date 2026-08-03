@@ -16,7 +16,7 @@ export function InlineTerminalOutput({
   return (
     <div className="my-2 overflow-hidden rounded-xl border border-border-subtle bg-[#0d1117] shadow-glass">
       {/* 命令行栏 */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border-subtle/50 bg-bg-surface/40 backdrop-blur-sm">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border-subtle/50 bg-bg-surface">
         <span className="text-xs text-text-muted font-mono">$ {command}</span>
         {duration && <span className="text-[10px] text-text-muted">{duration}</span>}
       </div>

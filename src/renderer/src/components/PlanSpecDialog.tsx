@@ -96,7 +96,7 @@ export function PlanSpecDialog(): React.ReactElement | null {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 animate-fade-in"
       onClick={handleClose}
     >
       <div
