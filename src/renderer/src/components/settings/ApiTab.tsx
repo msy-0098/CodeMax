@@ -48,7 +48,7 @@ export function ApiTab({
 
   return (
     <div className="space-y-5">
-      <SectionTitle title="API 密钥" desc="配置 DeepSeek-V4 的访问凭证，密钥仅存储在本地" />
+      <SectionTitle title="API 密钥" desc="配置 CodeMax 的访问凭证，密钥仅存储在本地" />
 
       {/* API Key */}
       <div>

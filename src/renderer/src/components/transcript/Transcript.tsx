@@ -1,5 +1,5 @@
 // ── Transcript — 会话区主组件 ─────────────────────────────────────────
-// 参考 DeepSeek-Reasonix 的 Transcript.tsx
+// 参考 Reasonix 的 Transcript.tsx
 // 三层分区 (Hot/Warm/Cold) + TurnCollapse 过程折叠 + 滚动管理
 
 import {

@@ -21,7 +21,7 @@ export function migrateSettings(parsed: Partial<AppSettings> | undefined): Migra
   const apiKey = parsed.apiKey || ''
   const isDeepSeek = detectSupportsThinkingByBaseUrl(baseUrl)
 
-  // 仅 DeepSeek baseUrl 匹配预设（旧版默认即 DeepSeek）；其他 URL 一律按自定义服务商迁移
+  // 仅 deepseek 端点匹配预设（旧版默认即 deepseek 服务商）；其他 URL 一律按自定义服务商迁移
   const preset = PROVIDER_PRESETS.find((p) => p.baseUrl === baseUrl && isDeepSeek)
   let provider: ModelProvider
   if (preset) {

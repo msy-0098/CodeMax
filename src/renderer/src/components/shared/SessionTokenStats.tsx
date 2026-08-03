@@ -2,7 +2,7 @@ import { Activity, Database, TrendingUp, MessagesSquare, Gauge } from 'lucide-re
 import { useStore } from '../../store/useStore'
 import type { Conversation } from '../../../../shared/types'
 
-/** DeepSeek-V4 系列上下文窗口大小（1M tokens） */
+/** 当前模型系列上下文窗口大小（1M tokens） */
 const CONTEXT_WINDOW = 1_000_000
 
 interface Props {

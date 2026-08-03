@@ -1,5 +1,5 @@
 // ── UserMessage — 用户消息气泡 ────────────────────────────────────────
-// 参考 DeepSeek-Reasonix 的 UserMessage（内联编辑 + 元信息栏）
+// 参考 Reasonix 的 UserMessage（内联编辑 + 元信息栏）
 
 import { memo, useState, useRef, useCallback, useEffect } from 'react'
 import { Copy, Check, Pencil, CornerDownRight } from 'lucide-react'

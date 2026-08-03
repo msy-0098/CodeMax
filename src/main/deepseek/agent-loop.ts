@@ -37,7 +37,7 @@ export async function agentLoop(
   const { onChunk, signal } = handlers
 
   if (!apiKey) {
-    onChunk({ done: true, error: '未配置 API Key，请前往设置填写你的 DeepSeek API 密钥。' })
+    onChunk({ done: true, error: '未配置 API Key，请前往设置填写你的 API 密钥。' })
     return
   }
 
@@ -154,7 +154,7 @@ export async function agentLoop(
       }
 
       // A2 reasoning_content 本地保留请求剥离（空字符串 key）
-      // DeepSeek thinking 模式下 assistant tool_calls turn 缺 reasoning_content key 会 400
+      // thinking 模式下 assistant tool_calls turn 缺 reasoning_content key 会 400
       // 策略：key 必存在，值恒为空字符串 — 既满足 API 又不污染前缀
       const assistantMsg: MutableMessage = {
         role: 'assistant',

@@ -36,7 +36,7 @@ export function CodingWelcome(): React.ReactElement {
           </div>
           <h1 className="text-2xl font-bold text-text-primary">+Code 编程模式</h1>
           <p className="mt-2 text-sm text-text-secondary max-w-md">
-            代码生成 · 审查 · 解释 · 重构 · 测试 — 由 DeepSeek-V4 驱动
+            代码生成 · 审查 · 解释 · 重构 · 测试 — 由 CodeMax 驱动
           </p>
         </div>
 

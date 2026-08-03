@@ -1,5 +1,5 @@
 // ── 轮次分组 + 温区/冷区分页逻辑 ───────────────────────────────────────
-// 参考 DeepSeek-Reasonix 的 transcriptGrouping.ts
+// 参考 Reasonix 的 transcriptGrouping.ts
 
 import type { TranscriptItem, TurnGroup, QuestionAnchor, WarmLayerState, NoticeItem, AssistantItem } from './transcriptTypes'
 

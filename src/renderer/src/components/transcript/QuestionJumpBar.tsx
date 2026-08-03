@@ -1,5 +1,5 @@
 // ── QuestionJumpBar — 问题导航条 + 回到底部按钮 ───────────────────────
-// 参考 DeepSeek-Reasonix 的 QuestionJumpBar
+// 参考 Reasonix 的 QuestionJumpBar
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { ArrowDown } from 'lucide-react'

@@ -5,7 +5,7 @@
  * 2. PRUNE（硬阈值 80%）：进一步缩短旧 tool 结果为最小占位符
  * 3. 不做 summary 压缩（需要额外 LLM 调用，暂不实现，靠 snip+prune 足够）
  *
- * 此文件位于 shared/ 目录，供主进程（deepseek.ts）和渲染进程（buildApiMessages.ts）共同使用，
+ * 此文件位于 shared/ 目录，供主进程和渲染进程（buildApiMessages.ts）共同使用，
  * 确保两端的截断/压缩逻辑完全一致，避免因不一致导致 prompt 缓存失效。
  */
 

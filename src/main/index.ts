@@ -386,7 +386,7 @@ ipcMain.handle('memory:save', async (_event, mode: Mode, content: string) => {
   return true
 })
 
-// ---------- DeepSeek Tokenizer ----------
+// ---------- 本地 BPE Tokenizer ----------
 ipcMain.handle('tokenizer:count', async (_event, text: string) => {
   try {
     const { countTokens } = await import('./deepseek/tokenizer')

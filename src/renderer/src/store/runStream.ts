@@ -107,7 +107,7 @@ export async function runStream(
   const segments: StreamingSegment[] = [{ reasoning: '', content: '', toolCalls: [] }]
   const currentSeg = (): StreamingSegment => segments[segments.length - 1]
 
-  // 累积 usage — DeepSeek 可能在流结束前最后一帧才发 usage
+  // 累积 usage — 部分服务商在流结束前最后一帧才发 usage
   let tokens: number | null = null
   let totalTokensAccum = 0
   let promptTokensAccum = 0

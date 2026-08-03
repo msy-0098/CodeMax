@@ -1,5 +1,5 @@
 // ── AssistantMessage — 助手消息（推理面板 + Markdown 正文） ────────────
-// 参考 DeepSeek-Reasonix 的 AssistantMessage + ReasoningPanel
+// 参考 Reasonix 的 AssistantMessage + ReasoningPanel
 
 import { memo, useState, useRef, useEffect, useCallback, createContext, useContext } from 'react'
 import { ChevronRight, Brain } from 'lucide-react'

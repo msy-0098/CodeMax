@@ -2,7 +2,7 @@ import type { ModeConfig } from '../../../shared/types'
 
 /**
  * 三大模式配置：系统提示词 + 快捷操作模板
- * 每个模式针对不同场景优化 DeepSeek-V4 的输出风格
+ * 每个模式针对不同场景优化 CodeMax 的输出风格
  */
 export const MODE_CONFIGS: Record<'office' | 'coding' | 'design', ModeConfig> = {
   // ---------- 办公模式 ----------

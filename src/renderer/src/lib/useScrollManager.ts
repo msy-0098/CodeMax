@@ -1,5 +1,5 @@
 // ── 滚动管理 Hook ─────────────────────────────────────────────────────
-// 参考 DeepSeek-Reasonix 的 useScrollManager
+// 参考 Reasonix 的 useScrollManager
 // 自动钉底 + 用户意图检测 + rAF 合并流式滚动
 
 import { useCallback, useEffect, useRef, useState } from 'react'

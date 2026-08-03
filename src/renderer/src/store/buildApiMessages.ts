@@ -9,7 +9,7 @@ import type {
 import { GLM_PARADIGM_PROMPT } from '../../../shared/glm-paradigm'
 import { trimContext, truncateToolResult, type AgentConfig } from '../../../shared/context-compress'
 
-/** 默认上下文配置 — 与 deepseek.ts 中 agentConfig 默认值保持一致 */
+/** 默认上下文配置 — 与主进程 agentConfig 默认值保持一致 */
 const DEFAULT_CONFIG: AgentConfig = {
   maxToolResultChars: 8000,
   maxContextChars: 300000,
@@ -23,7 +23,7 @@ const DEFAULT_CONFIG: AgentConfig = {
  * 关键：保留 tool_calls / tool 结果，让 LLM 在多轮对话中记住之前的操作
  *
  * 缓存优化策略（按稳定性分层前缀）：
- * DeepSeek prompt 缓存基于前缀匹配——Turn N+1 的消息列表必须是 Turn N 的严格扩展，
+ * prompt 缓存基于前缀匹配——Turn N+1 的消息列表必须是 Turn N 的严格扩展，
  * 否则前缀断裂处之后的所有 token 都变为未命中。
  *
  * 消息列表按「稳定性递减」排列，确保高稳定内容始终命中缓存：

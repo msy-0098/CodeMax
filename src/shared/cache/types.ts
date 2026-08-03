@@ -32,7 +32,7 @@ export interface CacheDiagnostics {
   cacheHitTokens: number
 }
 
-/** 归一化后的 Usage — 统一 DeepSeek/OpenAI 两种缓存字段形态 */
+/** 归一化后的 Usage — 统一不同服务商的缓存字段形态 */
 export interface NormalizedUsage {
   promptTokens: number
   completionTokens: number

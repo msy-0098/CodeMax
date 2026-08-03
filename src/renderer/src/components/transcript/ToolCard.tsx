@@ -1,5 +1,5 @@
 // ── ToolCard — 单个工具调用卡片 ────────────────────────────────────────
-// 参考 DeepSeek-Reasonix 的 ToolCard.tsx
+// 参考 Reasonix 的 ToolCard.tsx
 
 import { memo, useState } from 'react'
 import { ChevronRight, Loader2, CheckCircle, XCircle, Terminal, FileText, Search, Edit3, GitBranch, Cpu } from 'lucide-react'

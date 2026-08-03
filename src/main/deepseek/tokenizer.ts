@@ -1,5 +1,5 @@
 /**
- * DeepSeek V4 Tokenizer — 纯 TypeScript BPE 分词器
+ * 本地 BPE Tokenizer — 纯 TypeScript 实现
  *
  * 等价于 Python 版的 transformers.AutoTokenizer，
  * 读取 HuggingFace 格式的 tokenizer.json，
@@ -184,7 +184,7 @@ function bpe(token: string, mergeRanks: Map<string, number>): string[] {
 // ====== 公开 API ======
 
 /**
- * 计算文本的 token 数量（与 DeepSeek V4 分词器一致）。
+ * 计算文本的 token 数量（与服务端口径一致）。
  * 首次调用时懒加载 tokenizer.json（约 100-300ms），后续调用走缓存。
  */
 export function countTokens(text: string): number {

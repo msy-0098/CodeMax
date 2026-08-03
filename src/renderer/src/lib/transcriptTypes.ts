@@ -1,5 +1,5 @@
 // ── Transcript Item 类型 — 扁平化的会话条目 ──────────────────────────────
-// 参考 DeepSeek-Reasonix 的 Item 联合类型，适配我们的 ChatMessage 数据模型
+// 参考 Reasonix 的 Item 联合类型，适配我们的 ChatMessage 数据模型
 
 export type ToolStatus = 'running' | 'done' | 'error' | 'stopped'
 

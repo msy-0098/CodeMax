@@ -16,7 +16,7 @@ export interface ModelProvider {
   apiKey: string
   /** 可选模型列表 */
   models: string[]
-  /** 是否支持 DeepSeek 专属思考链参数（enable_thinking / reasoning_content） */
+  /** 是否支持思考链参数（enable_thinking / reasoning_content） */
   supportsThinking: boolean
 }
 

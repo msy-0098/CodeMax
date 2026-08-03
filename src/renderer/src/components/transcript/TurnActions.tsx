@@ -1,5 +1,5 @@
 // ── TurnActions — 轮次操作栏（复制 + 重新生成） ──────────────────────
-// 参考 DeepSeek-Reasonix 的 TurnActions
+// 参考 Reasonix 的 TurnActions
 
 import { memo, useState, useCallback, useRef, useEffect } from 'react'
 import { Copy, Check, RotateCcw } from 'lucide-react'

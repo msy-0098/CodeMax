@@ -127,7 +127,7 @@ export function AboutTab(): React.ReactElement {
         </div>
         <div>
           <h3 className="text-lg font-bold text-text-primary">CodeMax</h3>
-          <p className="text-sm text-text-secondary">DeepSeek-V4 全能 Agent 工作台</p>
+          <p className="text-sm text-text-secondary">CodeMax 全能 Agent 工作台</p>
           <p className="mt-0.5 text-xs text-text-muted">版本 {appVersion} · MIT License</p>
         </div>
       </div>
@@ -198,7 +198,7 @@ export function AboutTab(): React.ReactElement {
       </div>
 
       <Divider />
-      <SectionTitle title="DeepSeek-V4 模型" desc="由深度求索于 2026 年 4 月发布的新一代旗舰大模型" />
+      <SectionTitle title="CodeMax 模型" desc="由深度求索于 2026 年 4 月发布的新一代旗舰大模型" />
 
       <div className="grid grid-cols-2 gap-2.5">
         <InfoCard label="上下文窗口" value="1M tokens" />

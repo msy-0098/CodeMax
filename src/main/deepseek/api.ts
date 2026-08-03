@@ -355,7 +355,7 @@ export async function streamChat(
   const { onChunk, signal } = handlers
 
   if (!apiKey) {
-    onChunk({ done: true, error: '未配置 API Key，请前往设置填写你的 DeepSeek API 密钥。' })
+    onChunk({ done: true, error: '未配置 API Key，请前往设置填写你的 API 密钥。' })
     return
   }
 

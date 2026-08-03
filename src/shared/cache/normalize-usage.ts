@@ -4,7 +4,7 @@ import type { NormalizedUsage } from './types'
  * normaliseUsage — 参考 Reasonix 的 normaliseUsage()
  *
  * 将两种 cache-hit 字段形态归一为统一的 Usage：
- * - DeepSeek: prompt_cache_hit_tokens / prompt_cache_miss_tokens 在 usage 顶层
+ * - deepseek 端点: prompt_cache_hit_tokens / prompt_cache_miss_tokens 在 usage 顶层
  * - OpenAI/MiMo: prompt_tokens_details.cached_tokens 嵌套
  *
  * 哪边报告非零值就用哪边；当只有 hit 时派生 miss = prompt - hit，
