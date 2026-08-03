@@ -1,7 +1,7 @@
 {
   "name": "codemax",
-  "version": "1.0.6",
-  "description": "DeepSeek-V4 驱动的全能 Agent 工作台 - 办公/编程/设计三模式",
+  "version": "1.0.7",
+  "description": "CodeMax 驱动的全能 Agent 工作台 - 办公/编程/设计三模式",
   "author": "ximo",
   "main": "out/main/index.js",
   "type": "module",
