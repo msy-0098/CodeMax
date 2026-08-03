@@ -10,6 +10,7 @@ import { getCheckpointStore, removeCheckpointStore } from './CheckpointStore'
 import { registerChatHandlers } from './ipc/chat-handler'
 import { registerFsHandlers } from './ipc/fs-handlers'
 import { registerNetworkHandlers } from './ipc/network-handlers'
+import { registerProviderHandlers } from './ipc/providers-handlers'
 // 内嵌浏览器 IPC 桥 — 模块加载时注册 handler，必须在启动时导入，
 // 否则用户打开内置浏览器时 'embedded-browser:set-active' 尚未注册导致报错
 import './tools/Browser/WebviewBridge'
@@ -583,6 +584,7 @@ ipcMain.handle('app:getVersion', () => app.getVersion())
 registerChatHandlers()
 registerFsHandlers()
 registerNetworkHandlers()
+registerProviderHandlers()
 
 // 全局异常兜底，防止未捕获异常导致应用崩溃
 process.on('uncaughtException', (error) => {

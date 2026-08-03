@@ -39,6 +39,10 @@ const api = {
     save: (settings: AppSettings): Promise<boolean> =>
       ipcRenderer.invoke('settings:save', settings)
   },
+  providers: {
+    fetchModels: (baseUrl: string, apiKey: string): Promise<{ success: boolean; models?: string[]; error?: string }> =>
+      ipcRenderer.invoke('providers:fetchModels', baseUrl, apiKey)
+  },
   conversations: {
     load: (): Promise<Conversation[]> => ipcRenderer.invoke('conversations:load'),
     save: (conversations: Conversation[]): Promise<boolean> =>
