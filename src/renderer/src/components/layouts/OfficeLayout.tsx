@@ -5,6 +5,7 @@ import { MODE_CONFIGS } from '../../modes'
 import { MessageItem } from '../MessageItem'
 import { ToolPanel } from '../ToolPanel'
 import type { Mode } from '../../../../shared/types'
+import { getModelLabel } from '../../../../shared/model-label'
 
 // 功能胶囊按钮（空状态下隐藏导出，因为无内容可导出）
 const CAPSULE_ACTIONS = [
@@ -219,7 +220,9 @@ export function OfficeLayout(): React.ReactElement {
 
 function ChatHeader({ mode, title, onExport }: { mode: Mode; title?: string; onExport: () => void }): React.ReactElement {
   const thinkingMode = useStore((s) => s.settings?.thinkingMode)
+  const settings = useStore((s) => s.settings)
   const model = useStore((s) => s.settings?.model)
+  const modelLabel = settings ? getModelLabel(settings) : model
   const config = MODE_CONFIGS[mode]
   return (
     <div className="flex items-center justify-between border-b border-border-subtle glass px-5 py-2.5 shrink-0">
@@ -231,7 +234,7 @@ function ChatHeader({ mode, title, onExport }: { mode: Mode; title?: string; onE
         <button onClick={onExport} className="btn-ghost rounded-lg px-2.5 py-1 text-[11px]" title="导出最后一条回复为 Markdown">
           导出
         </button>
-        {thinkingMode !== undefined && model && <span className="chip px-2 py-0.5 text-[11px] text-text-muted">{thinkingMode ? '思考' : '快速'} · {model.includes('pro') ? 'V4-Pro' : 'V4-Flash'}</span>}
+        {thinkingMode !== undefined && model && <span className="chip px-2 py-0.5 text-[11px] text-text-muted">{thinkingMode ? '思考' : '快速'} · {modelLabel}</span>}
       </div>
     </div>
   )

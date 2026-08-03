@@ -6,6 +6,7 @@ import { SessionBar } from '../coding/SessionBar'
 import { Transcript } from '../transcript/Transcript'
 import { adaptMessages, buildLiveStream } from '../../lib/transcriptAdapter'
 import type { ChatMessage } from '../../../../shared/types'
+import { getModelLabel } from '../../../../shared/model-label'
 
 // 懒加载检查点浏览器 — 仅在有文件变更时才显示
 const CheckpointViewer = lazy(() => import('../coding/CheckpointViewer').then(m => ({ default: m.CheckpointViewer })))
@@ -64,7 +65,8 @@ export function CodingLayout(): React.ReactElement {
   const editMessage = useStore((s) => s.editMessage)
 
   const fontSize = useStore((s) => s.settings?.fontSize) ?? 'md'
-  const modelLabel = useStore((s) => s.settings?.model?.includes('pro')) ? 'DeepSeek V4-Pro' : 'DeepSeek V4-Flash'
+  const settings = useStore((s) => s.settings)
+  const modelLabel = settings ? getModelLabel(settings) : '未知模型'
 
   const isEmpty = !conversation || conversation.messages.length === 0
   const isStreamingThis = isStreaming && streamingConversationId === conversation?.id

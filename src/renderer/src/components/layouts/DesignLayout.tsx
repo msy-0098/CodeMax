@@ -5,6 +5,7 @@ import { MessageItem } from '../MessageItem'
 import { Icon } from '../Icon'
 import { ToolPanel } from '../ToolPanel'
 import type { Mode, ChatMessage } from '../../../../shared/types'
+import { getModelLabel } from '../../../../shared/model-label'
 
 // 懒加载空状态欢迎页
 const DesignWelcome = lazy(() => import('../../DesignWelcome').then(m => ({ default: m.DesignWelcome })))
@@ -124,7 +125,9 @@ export function DesignLayout(): React.ReactElement {
 
 function ChatHeader({ mode, title, onPreview, onExport, hasContent }: { mode: Mode; title?: string; onPreview: () => void; onExport: () => void; hasContent: boolean }): React.ReactElement {
   const thinkingMode = useStore((s) => s.settings?.thinkingMode)
+  const settings = useStore((s) => s.settings)
   const model = useStore((s) => s.settings?.model)
+  const modelLabel = settings ? getModelLabel(settings) : model
   const config = MODE_CONFIGS[mode]
   return (
     <div className="flex items-center justify-between border-b border-border-subtle glass px-5 py-2.5 shrink-0">
@@ -150,7 +153,7 @@ function ChatHeader({ mode, title, onPreview, onExport, hasContent }: { mode: Mo
             </button>
           </>
         )}
-        {thinkingMode !== undefined && model && <span className="chip px-2 py-0.5 text-[11px] text-text-muted">{thinkingMode ? '思考' : '快速'} · {model.includes('pro') ? 'V4-Pro' : 'V4-Flash'}</span>}
+        {thinkingMode !== undefined && model && <span className="chip px-2 py-0.5 text-[11px] text-text-muted">{thinkingMode ? '思考' : '快速'} · {modelLabel}</span>}
       </div>
     </div>
   )
