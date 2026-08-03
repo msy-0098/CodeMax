@@ -76,7 +76,7 @@
       "target": [
         "AppImage"
       ],
-      "icon": "build/icon.png",
+      "icon": "build/icon-512.png",
       "category": "Development"
     },
     "mac": {
@@ -84,6 +84,7 @@
         "dmg",
         "zip"
       ],
+      "icon": "build/icon-512.png",
       "category": "public.app-category.developer-tools"
     },
     "nsis": {
