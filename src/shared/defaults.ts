@@ -1,4 +1,5 @@
 import type { AppSettings } from './types'
+import { PROVIDER_PRESETS, buildPresetProvider } from './providers'
 
 /**
  * 应用默认设置 — 主进程与渲染进程共用的单一数据源。
@@ -10,6 +11,8 @@ import type { AppSettings } from './types'
 export const DEFAULT_SETTINGS: AppSettings = {
   apiKey: '',
   baseUrl: 'https://api.deepseek.com/v1',
+  providers: PROVIDER_PRESETS.map((p) => buildPresetProvider(p)),
+  activeProviderId: 'deepseek',
   model: 'deepseek-v4-pro',
   thinkingMode: true,
   reasoningEffort: 'high',
@@ -74,7 +77,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   mcpConnectTimeout: 30,
 
   // ---- 视觉模型（Agnes 2.5 Flash）----
-  visionApiKey: 'sk-qeSAXtALEYUpoGzpOFtGQwpgCV4kmvv2lKak57q6PKF1Zj9m',
+  visionApiKey: '',
   visionBaseUrl: 'https://api.agnes-ai.cn/v1',
   visionModel: 'agnes-2.5-flash',
 

@@ -3,6 +3,7 @@ import { join } from 'path'
 import { mkdir, readFile, writeFile } from 'fs/promises'
 import type { AppSettings, Conversation, Mode } from '../shared/types'
 import { DEFAULT_SETTINGS } from './constants'
+import { migrateSettings } from '../shared/migrate-settings'
 
 const dataDir = join(app.getPath('userData'), 'ximo-agent')
 const settingsFile = join(dataDir, 'settings.json')
@@ -20,7 +21,12 @@ export async function loadSettings(): Promise<AppSettings> {
     await ensureDir()
     const raw = await readFile(settingsFile, 'utf-8')
     const parsed = JSON.parse(raw)
-    return { ...DEFAULT_SETTINGS, ...parsed }
+    const { settings: migrated, needsWriteBack } = migrateSettings(parsed)
+    const merged: AppSettings = { ...DEFAULT_SETTINGS, ...migrated }
+    if (needsWriteBack) {
+      await saveSettings(merged)
+    }
+    return merged
   } catch (e) {
     console.error('加载设置失败：', e)
   }
