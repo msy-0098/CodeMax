@@ -16,5 +16,8 @@ temp/
 known_hosts_tmp
 *.db
 
+# electron-builder 缓存（工作区重定向）
+.cache/
+
 # 翻译缓存
 .translate-cache.json
