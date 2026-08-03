@@ -14,7 +14,7 @@ const CodingLayout = lazy(() => import('./components/layouts/CodingLayout').then
 const DesignLayout = lazy(() => import('./components/layouts/DesignLayout').then(m => ({ default: m.DesignLayout })))
 
 // 懒加载弹窗组件 — 首次打开时才加载
-const SettingsModal = lazy(() => import('./components/SettingsModal').then(m => ({ default: m.SettingsModal })))
+const SettingsPage = lazy(() => import('./components/settings/SettingsPage').then(m => ({ default: m.SettingsPage })))
 const AgentExpertPanel = lazy(() => import('./components/AgentExpertPanel').then(m => ({ default: m.AgentExpertPanel })))
 const MemoryPanel = lazy(() => import('./components/MemoryPanel').then(m => ({ default: m.MemoryPanel })))
 const PlanSpecDialog = lazy(() => import('./components/PlanSpecDialog').then(m => ({ default: m.PlanSpecDialog })))
@@ -63,6 +63,7 @@ export default function App(): React.ReactElement {
   // ---- 全局键盘快捷键 ----
   const newConversation = useStore((s) => s.newConversation)
   const setMode = useStore((s) => s.setMode)
+  const showSettings = useStore((s) => s.showSettings)
   const setShowSettings = useStore((s) => s.setShowSettings)
   const setShowAgentPanel = useStore((s) => s.setShowAgentPanel)
   const setShowMemoryPanel = useStore((s) => s.setShowMemoryPanel)
@@ -232,10 +233,6 @@ export default function App(): React.ReactElement {
         </div>
       </div>
 
-      {/* 设置弹窗 */}
-      <Suspense fallback={null}>
-        <SettingsModal />
-      </Suspense>
       {/* AI 专家库面板 */}
       <Suspense fallback={null}>
         <AgentExpertPanel />
@@ -264,6 +261,15 @@ export default function App(): React.ReactElement {
   ) : (
     <div className="h-full bg-bg-base" />
   )
+
+  // 应用内全屏设置页 — 打开时替代主界面渲染
+  if (showSettings && loaded && settings) {
+    return (
+      <Suspense fallback={null}>
+        <SettingsPage />
+      </Suspense>
+    )
+  }
 
   // 启动动画 — 等 settings 加载完成后再决定是否播放
   if (!animationDone && loaded && settings && showStartupAnimation) {

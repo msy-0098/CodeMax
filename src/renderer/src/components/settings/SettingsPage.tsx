@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
-import { X, Key, Cpu, Users, Wrench, Gauge, Info } from 'lucide-react'
-import { useStore } from '../store/useStore'
-import type { AppSettings, TestResult, TransitionAnimationFile } from '../../../shared/types'
-import { FALLBACK_SETTINGS, type TabId, type TestState } from './settings/shared-components'
-import { ApiTab } from './settings/ApiTab'
-import { ModelTab } from './settings/ModelTab'
-import { AgentTab } from './settings/AgentTab'
-import { ToolsTab } from './settings/ToolsTab'
-import { AppearanceTab } from './settings/AppearanceTab'
-import { AboutTab } from './settings/AboutTab'
+import { ArrowLeft, Key, Cpu, Users, Wrench, Gauge, Info } from 'lucide-react'
+import { useStore } from '../../store/useStore'
+import type { AppSettings, TestResult, TransitionAnimationFile } from '../../../../shared/types'
+import { FALLBACK_SETTINGS, type TabId, type TestState } from './shared-components'
+import { ApiTab } from './ApiTab'
+import { ModelTab } from './ModelTab'
+import { AgentTab } from './AgentTab'
+import { ToolsTab } from './ToolsTab'
+import { AppearanceTab } from './AppearanceTab'
+import { AboutTab } from './AboutTab'
 
 const TABS: { id: TabId; label: string; icon: typeof Key }[] = [
   { id: 'api', label: 'API 配置', icon: Key },
@@ -19,9 +19,8 @@ const TABS: { id: TabId; label: string; icon: typeof Key }[] = [
   { id: 'about', label: '关于', icon: Info }
 ]
 
-export function SettingsModal(): React.ReactElement | null {
+export function SettingsPage(): React.ReactElement | null {
   const settings = useStore((s) => s.settings)
-  const showSettings = useStore((s) => s.showSettings)
   const setShowSettings = useStore((s) => s.setShowSettings)
   const updateSettings = useStore((s) => s.updateSettings)
   const clearAllConversations = useStore((s) => s.clearAllConversations)
@@ -42,27 +41,28 @@ export function SettingsModal(): React.ReactElement | null {
   const [transitionMsg, setTransitionMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const transitionFileRef = useRef<HTMLInputElement>(null)
 
-  // 每次打开弹窗时同步最新设置
+  // 每次进入设置页时同步最新设置（页面仅在 showSettings 时挂载）
   useEffect(() => {
-    if (showSettings && settings) {
+    if (settings) {
       setLocal(settings)
       setTestState('idle')
       setTestResult(null)
       setImportMsg(null)
       setTransitionMsg(null)
     }
-  }, [showSettings, settings])
+  }, [settings])
 
-  // 主题色实时预览：选色时即时生效，关闭弹窗时恢复已保存的颜色
+  // 主题色实时预览：选色时即时生效，退出设置页时恢复已保存的颜色
   useEffect(() => {
-    if (showSettings) {
-      document.documentElement.style.setProperty('--theme-color', local.themeColor)
-    } else if (settings?.themeColor) {
-      document.documentElement.style.setProperty('--theme-color', settings.themeColor)
+    document.documentElement.style.setProperty('--theme-color', local.themeColor)
+    return () => {
+      if (settings?.themeColor) {
+        document.documentElement.style.setProperty('--theme-color', settings.themeColor)
+      }
     }
-  }, [showSettings, local.themeColor, settings?.themeColor])
+  }, [local.themeColor, settings?.themeColor])
 
-  if (!showSettings || !settings) return null
+  if (!settings) return null
 
   const update = (patch: Partial<AppSettings>): void => {
     setLocal({ ...local, ...patch })
@@ -152,49 +152,63 @@ export function SettingsModal(): React.ReactElement | null {
   const hasChanges = JSON.stringify(local) !== JSON.stringify(settings)
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in"
-      onClick={() => setShowSettings(false)}
-    >
-      <div
-        className="glass-panel flex h-[620px] max-h-[88vh] w-[760px] max-w-[94vw] flex-col overflow-hidden animate-fade-scale"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* 标题栏 */}
-        <div className="flex items-center justify-between border-b border-border-subtle px-5 py-3.5">
-          <h2 className="text-base font-semibold text-text-primary">设置</h2>
+    <div className="flex h-full flex-col bg-bg-base">
+      {/* 顶栏 */}
+      <div className="relative flex items-center justify-between border-b border-border px-4 py-3">
+        <button
+          onClick={() => setShowSettings(false)}
+          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
+        >
+          <ArrowLeft size={16} />
+          返回
+        </button>
+        <h1 className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-base font-semibold text-text-primary">
+          设置
+        </h1>
+        <div className="flex items-center gap-2">
+          {hasChanges && (
+            <span className="text-xs text-amber-400/80 animate-pulse-dot">有未保存的更改</span>
+          )}
           <button
-            onClick={() => setShowSettings(false)}
-            className="icon-btn rounded-lg p-1.5"
+            onClick={handleReset}
+            className="rounded-lg px-3 py-1.5 text-xs text-text-muted transition-colors hover:bg-bg-hover hover:text-text-primary"
           >
-            <X size={18} />
+            恢复默认
+          </button>
+          <button
+            onClick={handleSave}
+            className="btn-liquid rounded-xl px-4 py-1.5 text-sm font-medium"
+          >
+            保存设置
           </button>
         </div>
+      </div>
 
-        <div className="flex min-h-0 flex-1">
-          {/* 左侧标签栏 */}
-          <nav className="glass w-44 flex-shrink-0 border-r border-border-subtle p-2">
-            {TABS.map((tab) => {
-              const Icon = tab.icon
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`mb-0.5 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
-                    activeTab === tab.id
-                      ? 'bg-accent/15 text-accent'
-                      : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
-                  }`}
-                >
-                  <Icon size={15} />
-                  {tab.label}
-                </button>
-              )
-            })}
-          </nav>
+      {/* 主体：左侧导航 + 右侧内容面板 */}
+      <div className="flex min-h-0 flex-1">
+        <nav className="w-52 shrink-0 overflow-y-auto border-r border-border bg-bg-surface p-2">
+          {TABS.map((tab) => {
+            const Icon = tab.icon
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`mb-0.5 flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                  activeTab === tab.id
+                    ? 'bg-accent/10 text-accent'
+                    : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                }`}
+              >
+                <Icon size={15} />
+                {tab.label}
+              </button>
+            )
+          })}
+        </nav>
 
-          {/* 右侧内容区 */}
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+        {/* 右侧内容区 */}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-3xl px-8 py-6">
             {activeTab === 'api' && (
               <ApiTab
                 local={local}
@@ -225,33 +239,6 @@ export function SettingsModal(): React.ReactElement | null {
               />
             )}
             {activeTab === 'about' && <AboutTab />}
-          </div>
-        </div>
-
-        {/* 底部按钮 */}
-        <div className="flex items-center justify-between border-t border-border-subtle px-5 py-3">
-          <button
-            onClick={handleReset}
-            className="text-xs text-text-muted transition-colors hover:text-text-primary"
-          >
-            恢复默认
-          </button>
-          <div className="flex items-center gap-2">
-            {hasChanges && (
-              <span className="text-xs text-amber-400/80 animate-pulse-dot">有未保存的更改</span>
-            )}
-            <button
-              onClick={() => setShowSettings(false)}
-              className="btn-ghost rounded-xl px-4 py-2 text-sm"
-            >
-              取消
-            </button>
-            <button
-              onClick={handleSave}
-              className="btn-liquid rounded-xl px-5 py-2 text-sm font-medium"
-            >
-              保存设置
-            </button>
           </div>
         </div>
       </div>
