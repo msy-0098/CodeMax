@@ -365,7 +365,7 @@ export function GlobalChatInput(): React.ReactElement {
   const placeholder = MODE_PLACEHOLDERS[currentMode]
 
   return (
-    <div className="relative z-10 px-4 pb-3 pt-2">
+    <div className="relative z-10 px-4 py-3">
       <div className="mx-auto max-w-4xl">
         {/* 附加文件标签 */}
         {attachedFiles.length > 0 && (
@@ -515,7 +515,7 @@ export function GlobalChatInput(): React.ReactElement {
           {/* 输入框底部工具栏 */}
           <div className="flex items-center justify-between px-3 pb-2.5">
             {/* 左侧工具图标 */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               <button
                 onClick={handleAttachFile}
                 className="icon-btn p-1.5"

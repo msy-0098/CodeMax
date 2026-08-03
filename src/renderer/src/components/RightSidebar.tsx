@@ -461,7 +461,7 @@ function FileTreeItem({
       <button
         onClick={() => (isDir ? setExpanded(!expanded) : onFileClick(node.path))}
         onContextMenu={(e) => onContextMenu?.(e, node)}
-        className="flex w-full items-center gap-1.5 py-[3px] text-left text-xs transition-colors hover:bg-bg-hover"
+        className="flex w-full items-center gap-1.5 py-1.5 text-left text-xs transition-colors hover:bg-bg-hover"
         style={{ paddingLeft: `${paddingLeft}px`, paddingRight: '8px' }}
         title={node.path}
       >
