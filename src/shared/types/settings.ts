@@ -2,9 +2,31 @@
 
 import type { ModelId, ReasoningEffort, FontSize } from './core'
 
+/** 模型服务商配置 — 一个服务商 = 一套 OpenAI 兼容连接 */
+export interface ModelProvider {
+  /** 唯一 ID：预设用 'deepseek'|'openai'|'glm'|'kimi'|'qwen'|'siliconflow'，自定义用 'custom-N' */
+  id: string
+  /** 显示名 */
+  name: string
+  /** 预设不可删除；自定义可增删改 */
+  kind: 'preset' | 'custom'
+  /** OpenAI 兼容 Base URL（不含尾部 /chat/completions） */
+  baseUrl: string
+  /** 该服务商独立的 API Key */
+  apiKey: string
+  /** 可选模型列表 */
+  models: string[]
+  /** 是否支持 DeepSeek 专属思考链参数（enable_thinking / reasoning_content） */
+  supportsThinking: boolean
+}
+
 export interface AppSettings {
   apiKey: string
   baseUrl: string
+  /** 模型服务商列表（预设 + 自定义） */
+  providers: ModelProvider[]
+  /** 当前激活的服务商 ID */
+  activeProviderId: string
   model: ModelId
   thinkingMode: boolean
   /** 思考强度：off=关闭思考, high=高, max=最高, ultra=终极（工程范式+监督审查） */

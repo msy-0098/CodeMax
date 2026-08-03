@@ -74,6 +74,8 @@ export interface ChatRequest {
   sessionId?: string
   /** Auto Mode 等级：off=手动确认, safe=读操作自动, yolo=全部自动 */
   autoModeLevel?: 'off' | 'safe' | 'yolo'
+  /** 服务商是否支持思考链 — 由主进程根据 active provider 注入，渲染进程不设置 */
+  supportsThinking?: boolean
 }
 
 // 流式传输的数据块
