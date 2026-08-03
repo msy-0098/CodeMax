@@ -1,5 +1,5 @@
 {
-  "name": "ximo-agent",
+  "name": "codemax",
   "version": "1.0.6",
   "description": "DeepSeek-V4 驱动的全能 Agent 工作台 - 办公/编程/设计三模式",
   "author": "ximo",
@@ -58,8 +58,8 @@
     "vitest": "^4.1.10"
   },
   "build": {
-    "appId": "com.ximo.agent",
-    "productName": "XimoAgent",
+    "appId": "com.codemax.agent",
+    "productName": "CodeMax",
     "directories": {
       "output": "release"
     },

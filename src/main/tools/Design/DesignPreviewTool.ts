@@ -54,7 +54,7 @@ export class DesignPreviewTool implements Tool {
       this.previewWindow = new BrowserWindow({
         width: 1280,
         height: 800,
-        title: 'UI Preview - XimoAgent',
+        title: 'UI Preview - CodeMax',
         autoHideMenuBar: true,
         webPreferences: { sandbox: true, contextIsolation: true }
       })

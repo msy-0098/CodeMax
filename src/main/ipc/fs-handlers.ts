@@ -95,7 +95,7 @@ export function registerFsHandlers(): void {
 
   // 列出文件快照（用于版本回退 UI）
   ipcMain.handle('fs:listSnapshots', async (_event, targetFilePath?: string) => {
-    const snapDir = join(tmpdir(), 'ximo-agent-snapshots')
+    const snapDir = join(tmpdir(), 'codemax-snapshots')
     try {
       const files = await readdir(snapDir)
       const snapshots: Array<{ name: string; path: string; size: number; mtime: number }> = []

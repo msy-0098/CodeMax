@@ -88,7 +88,7 @@ export function DesignLayout(): React.ReactElement {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'ximo-design-export.html'
+    a.download = 'codemax-design-export.html'
     a.click()
     URL.revokeObjectURL(url)
   }

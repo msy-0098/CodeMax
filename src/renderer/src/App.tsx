@@ -41,7 +41,7 @@ export default function App(): React.ReactElement {
   useEffect(() => {
     const cleanup = window.api.confirm.onRequest((data) => {
       // 会话级 YOLO 模式检查
-      if (localStorage.getItem('ximo-yolo') === 'true') {
+      if (localStorage.getItem('codemax-yolo') === 'true') {
         window.api.confirm.respond(true)
         return
       }

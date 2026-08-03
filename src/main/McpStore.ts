@@ -3,7 +3,7 @@ import { join } from 'path'
 import { mkdir, readFile, writeFile } from 'fs/promises'
 import type { McpServerConfig, McpTransport } from '../shared/types'
 
-const dataDir = join(app.getPath('userData'), 'ximo-agent')
+const dataDir = join(app.getPath('userData'), 'codemax')
 const mcpFile = join(dataDir, 'mcp-config.json')
 
 async function ensureDir(): Promise<void> {

@@ -115,7 +115,7 @@ export class McpClient {
     await this.sendRequest('initialize', {
       protocolVersion: '2024-11-05',
       capabilities: {},
-      clientInfo: { name: 'ximo-agent', version: app.getVersion() }
+      clientInfo: { name: 'codemax', version: app.getVersion() }
     })
 
     // 发送 initialized 通知
@@ -136,7 +136,7 @@ export class McpClient {
       params: {
         protocolVersion: '2024-11-05',
         capabilities: {},
-        clientInfo: { name: 'ximo-agent', version: app.getVersion() }
+        clientInfo: { name: 'codemax', version: app.getVersion() }
       }
     })
 

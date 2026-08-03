@@ -3,7 +3,7 @@ import { join } from 'path'
 import { mkdir, readFile, writeFile } from 'fs/promises'
 import type { ImportedSkill } from '../shared/types'
 
-const dataDir = join(app.getPath('userData'), 'ximo-agent')
+const dataDir = join(app.getPath('userData'), 'codemax')
 const importedSkillsFile = join(dataDir, 'imported-skills.json')
 
 async function ensureDir(): Promise<void> {

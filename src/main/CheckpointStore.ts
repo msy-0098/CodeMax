@@ -55,7 +55,7 @@ export class CheckpointStore {
 
   constructor(sessionId: string) {
     this.sessionId = sessionId
-    this.dir = join(tmpdir(), 'ximo-agent-checkpoints', sessionId)
+    this.dir = join(tmpdir(), 'codemax-checkpoints', sessionId)
     this.load()
   }
 

@@ -200,7 +200,7 @@ export function StartupAnimation({
     'customTransitionAnimation'
   >
 }): React.ReactElement {
-  const text = config?.startupText ?? 'ximo-Agent'
+  const text = config?.startupText ?? 'CodeMax'
   const fontSize = config?.startupTextSize ?? 76
   const strokeDuration = config?.startupStrokeDuration ?? 460
   const fontFamily = config?.startupFontFamily ?? "'Dancing Script', cursive"

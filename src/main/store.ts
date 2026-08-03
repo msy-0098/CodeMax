@@ -5,7 +5,7 @@ import type { AppSettings, Conversation, Mode } from '../shared/types'
 import { DEFAULT_SETTINGS } from './constants'
 import { migrateSettings } from '../shared/migrate-settings'
 
-const dataDir = join(app.getPath('userData'), 'ximo-agent')
+const dataDir = join(app.getPath('userData'), 'codemax')
 const settingsFile = join(dataDir, 'settings.json')
 const conversationsFile = join(dataDir, 'conversations.json')
 const memoryDir = join(dataDir, 'memory')

@@ -179,7 +179,7 @@ export class CodeEnhancedExecuteTool implements Tool {
     const os = await import('os')
 
     const tmpDir = os.tmpdir()
-    const fileName = `ximo_exec_${Date.now()}${langConfig.ext}`
+    const fileName = `codemax_exec_${Date.now()}${langConfig.ext}`
     const filePath = path.join(tmpDir, fileName)
 
     try {

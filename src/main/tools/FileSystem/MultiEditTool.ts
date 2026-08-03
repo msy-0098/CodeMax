@@ -8,7 +8,7 @@ import type { ToolDefinition, ToolCall, ToolResult, StreamChunk } from '../../..
 /** 编辑前备份到临时目录 */
 async function snapshotFile(filePath: string): Promise<string | null> {
   if (!existsSync(filePath)) return null
-  const snapDir = join(tmpdir(), 'ximo-agent-snapshots')
+  const snapDir = join(tmpdir(), 'codemax-snapshots')
   const safeName = basename(filePath).replace(/[^\w.-]/g, '_')
   const bakPath = join(snapDir, `${safeName}.snapshot-${Date.now()}.bak`)
   try {

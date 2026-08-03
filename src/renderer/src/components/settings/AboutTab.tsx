@@ -126,7 +126,7 @@ export function AboutTab(): React.ReactElement {
           <Cpu size={28} className="text-white" />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-text-primary">XimoAgent</h3>
+          <h3 className="text-lg font-bold text-text-primary">CodeMax</h3>
           <p className="text-sm text-text-secondary">DeepSeek-V4 全能 Agent 工作台</p>
           <p className="mt-0.5 text-xs text-text-muted">版本 {appVersion} · MIT License</p>
         </div>

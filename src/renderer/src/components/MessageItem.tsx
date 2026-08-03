@@ -478,7 +478,7 @@ export const MessageItem = memo(function MessageItem({
         {/* 模型标签 */}
         <div className="mb-1 flex items-center gap-2">
           <span className="text-xs font-medium text-text-secondary">
-            XimoAgent
+            CodeMax
           </span>
           {message.model && !isStreaming && (
             <span className="chip px-1.5 py-0.5 text-[10px] text-text-muted">

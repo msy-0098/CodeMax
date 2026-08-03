@@ -650,7 +650,7 @@ export function GlobalChatInput(): React.ReactElement {
               <button
                 onClick={() => {
                   if (browserOpen && isBrowserRecording) {
-                    window.dispatchEvent(new CustomEvent('ximo:stop-recording'))
+                    window.dispatchEvent(new CustomEvent('codemax:stop-recording'))
                   } else {
                     toggleBrowser()
                   }
@@ -670,7 +670,7 @@ export function GlobalChatInput(): React.ReactElement {
               <button
                 onClick={() => {
                   if (isBrowserRecording) {
-                    window.dispatchEvent(new CustomEvent('ximo:stop-recording'))
+                    window.dispatchEvent(new CustomEvent('codemax:stop-recording'))
                   } else {
                     toggleBrowserRecording()
                   }

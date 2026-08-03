@@ -130,7 +130,7 @@ export interface AppSettings {
   // ---- 开屏动画 ----
   /** 开屏动画总开关 */
   startupAnimationEnabled?: boolean
-  /** 开屏文字（默认 ximo-Agent） */
+  /** 开屏文字（默认 CodeMax） */
   startupText?: string
   /** 开屏文字大小 */
   startupTextSize?: number

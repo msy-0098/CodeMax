@@ -104,7 +104,7 @@ const BrowserTab = memo(function BrowserTab({
       injectRecordingScript(wv)
     } else {
       const api = wv as unknown as { executeJavaScript: (code: string) => Promise<void> }
-      api.executeJavaScript?.('window.__ximoStopRecording && window.__ximoStopRecording()').catch(() => {})
+      api.executeJavaScript?.('window.__codemaxStopRecording && window.__codemaxStopRecording()').catch(() => {})
     }
   }, [isRecording])
 
@@ -171,9 +171,9 @@ const BrowserTab = memo(function BrowserTab({
       const handleConsoleMessage = (e: Event): void => {
         if (!isRecording) return
         const msg = (e as CustomEvent<{ message: string }>).detail?.message
-        if (!msg || !msg.startsWith('[XIMO_REC]')) return
+        if (!msg || !msg.startsWith('[CODEMAX_REC]')) return
         try {
-          const data = JSON.parse(msg.slice('[XIMO_REC]'.length)) as RecordedEvent
+          const data = JSON.parse(msg.slice('[CODEMAX_REC]'.length)) as RecordedEvent
           if (recordingEventsRef.current) {
             recordingEventsRef.current.push(data)
             onRecordedEvent()
@@ -532,8 +532,8 @@ export function EmbeddedBrowserPanel(): React.ReactElement {
   // 监听外部停止录制事件（来自输入框底部的"停止录制"按钮）— 确保执行完整保存流程
   useEffect(() => {
     const handler = (): void => { void handleStopRecording() }
-    window.addEventListener('ximo:stop-recording', handler)
-    return () => window.removeEventListener('ximo:stop-recording', handler)
+    window.addEventListener('codemax:stop-recording', handler)
+    return () => window.removeEventListener('codemax:stop-recording', handler)
   }, [handleStopRecording])
 
   const handleSaveSkill = useCallback(async (): Promise<void> => {
@@ -764,8 +764,8 @@ export function EmbeddedBrowserPanel(): React.ReactElement {
 function injectRecordingScript(wv: HTMLElement): void {
   const script = `
 (function() {
-  if (window.__ximoRecording) return;
-  window.__ximoRecording = true;
+  if (window.__codemaxRecording) return;
+  window.__codemaxRecording = true;
 
   function getSelector(el) {
     if (!el || el.nodeType !== 1) return '';
@@ -793,10 +793,10 @@ function injectRecordingScript(wv: HTMLElement): void {
   }
 
   document.addEventListener('click', function(e) {
-    if (!window.__ximoRecording) return;
+    if (!window.__codemaxRecording) return;
     var selector = getSelector(e.target);
     var text = (e.target.textContent || '').trim().slice(0, 100);
-    console.log('[XIMO_REC]' + JSON.stringify({
+    console.log('[CODEMAX_REC]' + JSON.stringify({
       type: 'click',
       selector: selector,
       text: text,
@@ -805,13 +805,13 @@ function injectRecordingScript(wv: HTMLElement): void {
   }, true);
 
   document.addEventListener('change', function(e) {
-    if (!window.__ximoRecording) return;
+    if (!window.__codemaxRecording) return;
     var target = e.target;
     var tag = target.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
       var selector = getSelector(target);
       var value = target.type === 'password' ? '***' : (target.value || '').slice(0, 200);
-      console.log('[XIMO_REC]' + JSON.stringify({
+      console.log('[CODEMAX_REC]' + JSON.stringify({
         type: 'input',
         selector: selector,
         value: value,
@@ -820,8 +820,8 @@ function injectRecordingScript(wv: HTMLElement): void {
     }
   }, true);
 
-  window.__ximoStopRecording = function() { window.__ximoRecording = false; };
-  console.log('[XIMO_REC] Recording script injected');
+  window.__codemaxStopRecording = function() { window.__codemaxRecording = false; };
+  console.log('[CODEMAX_REC] Recording script injected');
 })();
   `.trim()
 

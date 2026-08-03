@@ -43,7 +43,7 @@ export function TitleBar(): React.ReactElement {
   }, [])
 
   const currentConv = conversations.find((c) => c.id === currentConversationId)
-  const statusText = currentConv ? currentConv.title : 'ximo-Agent 任务状态'
+  const statusText = currentConv ? currentConv.title : 'CodeMax 任务状态'
 
   return (
     <div className="drag-region relative z-20 flex h-[52px] flex-shrink-0 items-center justify-between border-b border-border-subtle glass pr-0">

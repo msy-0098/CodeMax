@@ -236,9 +236,9 @@ export function AppearanceTab({
               </div>
               <input
                 type="text"
-                value={local.startupText ?? 'ximo-Agent'}
+                value={local.startupText ?? 'CodeMax'}
                 onChange={(e) => update({ startupText: e.target.value })}
-                placeholder="ximo-Agent"
+                placeholder="CodeMax"
                 maxLength={30}
                 className="w-full rounded-md border border-border bg-bg-elevated px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
               />

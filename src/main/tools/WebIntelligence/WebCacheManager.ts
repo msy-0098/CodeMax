@@ -26,7 +26,7 @@ export class WebCacheManager {
   private maxCacheSizeMB = 100
 
   constructor(cacheDir?: string) {
-    this.cacheDir = cacheDir || resolve(process.cwd(), '.ximo-cache', 'web')
+    this.cacheDir = cacheDir || resolve(process.cwd(), '.codemax-cache', 'web')
   }
 
   async init(): Promise<void> {

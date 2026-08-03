@@ -76,7 +76,7 @@ export function OfficeLayout(): React.ReactElement {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${conversation.title || 'ximo-doc'}.md`
+    a.download = `${conversation.title || 'codemax-doc'}.md`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -105,7 +105,7 @@ export function OfficeLayout(): React.ReactElement {
           <div className="w-full max-w-2xl">
             {/* 大标题 */}
             <h1 className="mb-6 text-center text-3xl font-bold text-text-primary">
-              Work with <span className="text-accent">ximo-Agent</span>
+              Work with <span className="text-accent">CodeMax</span>
             </h1>
 
             {/* 输入框下方下拉配置项 */}

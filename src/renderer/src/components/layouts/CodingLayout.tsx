@@ -142,7 +142,7 @@ export function CodingLayout(): React.ReactElement {
       <div className="flex items-center justify-between border-b border-border-subtle glass px-4 py-2 shrink-0">
         <div className="flex items-center gap-2">
           <FileCode2 size={14} className="text-accent" />
-          <span className="text-sm font-medium text-text-primary">ximo-Agent Code</span>
+          <span className="text-sm font-medium text-text-primary">CodeMax Code</span>
           <span className="text-xs text-text-muted">· 任务耗时 <SessionTimer startTime={conversation?.createdAt ?? Date.now()} /></span>
         </div>
         <div className="flex items-center gap-2">
