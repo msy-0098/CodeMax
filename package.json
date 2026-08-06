@@ -70,8 +70,7 @@
       "target": [
         "nsis"
       ],
-      "icon": "build/icon.ico",
-      "publisherName": "rain"
+      "icon": "build/icon.ico"
     },
     "linux": {
       "target": [
@@ -90,8 +89,7 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "publisherName": "rain"
+      "allowToChangeInstallationDirectory": true
     },
     "asarUnpack": [
       "prebuilt/**"

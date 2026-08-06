@@ -62,4 +62,6 @@ jobs:
             release/*.zip
           generate_release_notes: true
           overwrite: true
+          fail_on_unmatched_files: false
+
 
