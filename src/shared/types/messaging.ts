@@ -103,7 +103,7 @@ export interface StreamChunk {
   toolName?: string
   /** 监督审查 Agent 反馈（ultra 思考强度专用） */
   supervision?: {
-    verdict: 'on_track' | 'lazy' | 'off_track' | 'violation'
+    verdict: 'on_track' | 'lazy' | 'off_track' | 'violation' | 'quality' | 'completeness'
     issues: string[]
     correction?: string
     severity: 'low' | 'medium' | 'high'

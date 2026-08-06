@@ -195,6 +195,68 @@ export function registerChatHandlers(): void {
     currentController = null
   })
 
+  // LLM 摘要压缩 — 将旧消息发给 LLM 生成结构化摘要
+  ipcMain.handle('chat:summarize', async (_event, messages: { role: string; content: string }[]): Promise<{ summary?: string; error?: string }> => {
+    const settings = await loadSettings()
+    const provider = getActiveProvider(settings)
+
+    if (!provider.apiKey || !provider.baseUrl || !settings.model) {
+      return { error: 'API 未配置，无法生成摘要' }
+    }
+
+    const summarySystemPrompt = `你是一个精确的对话摘要生成器。请将以下对话历史压缩为一个结构化摘要。
+
+## 摘要要求
+保留以下关键信息：
+1. **任务目标**：用户的原始需求和当前进展状态
+2. **关键决策**：用户做出的重要决定（审批/拒绝/偏好选择）
+3. **文件修改记录**：修改了哪些文件、修改原因和结果
+4. **错误与解决**：遇到的错误及其解决方案
+5. **待办事项**：尚未完成的任务或下一步计划
+
+## 输出格式
+直接输出摘要文本（纯文本，不要 markdown 代码块包裹）。摘要应当简洁但信息完整，让后续对话能基于此摘要无缝继续工作。`
+
+    const userContent = messages
+      .map(m => `[${m.role}]: ${m.content}`)
+      .join('\n\n')
+
+    const url = `${provider.baseUrl.replace(/\/$/, '')}/chat/completions`
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${provider.apiKey}`
+        },
+        body: JSON.stringify({
+          model: settings.model,
+          messages: [
+            { role: 'system', content: summarySystemPrompt },
+            { role: 'user', content: `以下是需要摘要的对话历史：\n\n${userContent}` }
+          ],
+          stream: false,
+          max_tokens: 2048,
+          temperature: 0.3
+        }),
+        signal: AbortSignal.timeout(30_000)
+      })
+
+      if (!response.ok) {
+        return { error: `API 错误: ${response.status}` }
+      }
+
+      const data = await response.json() as Record<string, unknown>
+      const choices = data?.choices as Array<{ message?: { content?: string } }> | undefined
+      const summary = choices?.[0]?.message?.content || ''
+      if (!summary) return { error: '摘要生成结果为空' }
+      return { summary }
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : '摘要生成失败' }
+    }
+  })
+
   // 连接测试
   ipcMain.handle('chat:test', async (_event, apiKey: string, baseUrl: string, model: string) => {
     return testConnection(apiKey, baseUrl, model)

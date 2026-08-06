@@ -177,7 +177,7 @@ export function SettingsPage(): React.ReactElement | null {
           </button>
           <button
             onClick={handleSave}
-            className="btn-liquid rounded-xl px-4 py-1.5 text-sm font-medium"
+            className="rounded-lg bg-accent px-4 py-1.5 text-sm font-medium text-white shadow-sm transition-all hover:brightness-110 active:scale-[0.98]"
           >
             保存设置
           </button>

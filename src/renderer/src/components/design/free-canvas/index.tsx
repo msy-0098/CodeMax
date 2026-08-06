@@ -149,16 +149,12 @@ export function FreeCanvas(): React.ReactElement {
         <div className="relative">
           <button
             onClick={() => setShowScenarioPicker(!showScenarioPicker)}
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-colors"
-            style={currentScenario ? {
-              backgroundColor: 'rgba(99,102,241,0.12)',
-              color: '#818cf8',
-            } : undefined}
+            className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-colors ${
+              currentScenario ? 'bg-accent/10 text-accent' : 'text-text-muted hover:bg-bg-hover hover:text-text-secondary'
+            }`}
           >
             {ScenarioIcon ? <ScenarioIcon size={11} /> : <Layout size={11} />}
-            <span className={currentScenario ? '' : 'text-text-muted'}>
-              {currentScenario ? currentScenario.name : '场景'}
-            </span>
+            <span>{currentScenario ? currentScenario.name : '场景'}</span>
             <ChevronDown size={10} className="opacity-50" />
           </button>
           {showScenarioPicker && (
@@ -282,8 +278,8 @@ export function FreeCanvas(): React.ReactElement {
         {/* 空状态 */}
         {canvasItems.length === 0 && (
           <div className="flex h-full flex-col items-center justify-center py-8 text-center">
-            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-accent/15 to-purple-500/15">
-              <Box size={24} className="text-accent/60" />
+            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-border-subtle bg-bg-surface">
+              <Box size={22} className="text-accent/60" />
             </div>
             <p className="text-xs font-medium text-text-secondary">自由画布</p>
             <p className="mt-1 text-[10px] text-text-muted leading-relaxed">

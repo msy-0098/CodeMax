@@ -4,6 +4,7 @@ import { MODE_CONFIGS } from '../../modes'
 import { MessageItem } from '../MessageItem'
 import { Icon } from '../Icon'
 import { ToolPanel } from '../ToolPanel'
+import { useCappedMessages } from '../../hooks/useCappedMessages'
 import type { Mode, ChatMessage } from '../../../../shared/types'
 import { getModelLabel } from '../../../../shared/model-label'
 
@@ -49,6 +50,9 @@ export function DesignLayout(): React.ReactElement {
     if (!messages) return ''
     return extractLatestHtml(messages)
   }, [messages])
+
+  // 只渲染最近 N 条消息，长对话下避免 DOM 无限增长 / 流式时全量遍历历史
+  const { visible, hiddenCount, loadEarlier } = useCappedMessages(messages ?? [], scrollRef)
 
   const isStreamingThis = isStreaming && streamingConversationId === conversation?.id
 
@@ -108,8 +112,15 @@ export function DesignLayout(): React.ReactElement {
         <>
           <div ref={scrollRef} className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
             <div className={`mx-auto max-w-3xl space-y-5 px-4 py-6 chat-fs-${fontSize}`}>
-              {conversation!.messages.map((msg, idx) => (
-                <MessageItem key={msg.id} message={msg} canRegenerate={!isStreaming && msg.role === 'assistant' && idx === conversation!.messages.length - 1} onRegenerate={regenerate} onEditMessage={editMessage} />
+              {hiddenCount > 0 && (
+                <div className="flex justify-center pt-1">
+                  <button onClick={loadEarlier} className="chip px-3 py-1 text-[11px] text-accent border-accent/25 bg-accent/10 hover:bg-accent/15 transition-colors">
+                    查看更早的 {hiddenCount} 条消息
+                  </button>
+                </div>
+              )}
+              {visible.map((msg, idx) => (
+                <MessageItem key={msg.id} message={msg} canRegenerate={!isStreaming && msg.role === 'assistant' && idx === visible.length - 1} onRegenerate={regenerate} onEditMessage={editMessage} />
               ))}
               {isStreamingThis && (
                 <MessageItem message={STREAMING_MSG} isStreaming streamingContent={streamingContent} streamingReasoning={streamingReasoning} streamingToolCalls={streamingToolCalls} streamingSegments={streamingSegments} />
@@ -130,7 +141,7 @@ function ChatHeader({ mode, title, onPreview, onExport, hasContent }: { mode: Mo
   const modelLabel = settings ? getModelLabel(settings) : model
   const config = MODE_CONFIGS[mode]
   return (
-    <div className="flex items-center justify-between border-b border-border-subtle glass px-5 py-2.5 shrink-0">
+    <div className="flex items-center justify-between border-b border-border-subtle bg-bg-surface px-5 py-2.5 shrink-0">
       <div className="flex items-center gap-2 no-drag">
         <Icon name={config.icon} size={16} className="text-accent" />
         <span className="text-sm font-medium text-text-secondary">{config.name}</span>

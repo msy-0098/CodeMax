@@ -1,12 +1,12 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
-import { Paperclip, AtSign, Globe, ArrowUp, Zap, FolderOpen, X, Square, FileText, CircleDot, Play, Cpu, Palette, Box, Image } from 'lucide-react'
+import { Paperclip, AtSign, Globe, ArrowUp, Zap, X, Square, FileText, Play, Palette, Box, Image } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { SessionTokenStats } from './shared/SessionTokenStats'
 import { getAgentById, ensureAgentsLoaded } from '../agents'
 import type { Mode, FileTreeNode, Skill } from '../../../shared/types'
 import { MODE_PLACEHOLDERS, getSlashCommands, STYLE_CATALOG, COMPONENT_CATALOG } from './chat-input/constants'
 import { ModelSelector } from './chat-input/ModelSelector'
-import { ReasoningSlider } from './chat-input/ReasoningSlider'
+import { ReasoningSlider } from './chat-input/ReasoningSliderStarfield'
 import { ExpertPicker } from './chat-input/ExpertPicker'
 import { StylePicker } from './chat-input/StylePicker'
 import { ComponentPicker } from './chat-input/ComponentPicker'
@@ -16,7 +16,6 @@ export function GlobalChatInput(): React.ReactElement {
   const cancelStream = useStore((s) => s.cancelStream)
   const isStreaming = useStore((s) => s.isStreaming)
   const currentMode = useStore((s) => s.currentMode)
-  const streamingTokens = useStore((s) => s.streamingTokens)
   const networkSearchOn = useStore((s) => s.networkSearchOn)
   const setNetworkSearchOn = useStore((s) => s.setNetworkSearchOn)
   const autoModeLevel = useStore((s) => s.autoModeLevel)
@@ -455,14 +454,14 @@ export function GlobalChatInput(): React.ReactElement {
           </div>
         )}
 
-        {/* 输入框区域 — 一体化融合风格 */}
+        {/* 输入框区域 — Google Material Style 输入框 */}
         <div
-          className={`rounded-2xl border bg-bg-elevated transition-all duration-300 ease-out-quart ${
+          className={`rounded-xl border bg-bg-surface transition-all duration-200 ${
             isStreaming
-              ? 'beam-border border-accent/20'
+              ? 'border-accent/40 ring-1 ring-accent/20'
               : isDragOver
                 ? 'border-accent border-2'
-                : 'border-border-subtle hover:border-border focus-within:border-accent/40'
+                : 'border-border-subtle hover:border-border-hover focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/30'
           }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -475,7 +474,7 @@ export function GlobalChatInput(): React.ReactElement {
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             rows={1}
-            className="no-drag w-full resize-none bg-transparent px-4 pt-3 pb-1 text-[15px] text-text-primary placeholder:text-text-muted focus:outline-none"
+            className="no-drag w-full resize-none bg-transparent px-3.5 pt-3 pb-1 text-[14px] text-text-primary placeholder:text-text-muted focus:outline-none"
             style={{ maxHeight: '180px' }}
           />
 
@@ -483,54 +482,78 @@ export function GlobalChatInput(): React.ReactElement {
           {showFileMention && matchedFiles.length > 0 && (
             <div
               ref={fileMentionRef}
-              className="mx-4 mb-1 max-h-48 overflow-y-auto rounded-xl border border-border-subtle bg-bg-elevated border-border shadow-sm animate-scale-in"
+              className="panel mx-3 mb-1 flex max-h-48 flex-col animate-scale-in"
             >
-              <div className="px-3 py-1.5 text-[10px] text-text-muted border-b border-border-subtle">
-                文件引用 — ↑↓ 导航，Enter/Tab 确认，Esc 取消
+              <div className="panel__header">
+                <span>文件引用</span>
+                <span className="text-[10px] text-text-muted">↑↓ 导航 · Enter/Tab 确认 · Esc 取消</span>
               </div>
-              {matchedFiles.map((file, i) => {
-                const fileName = file.split('/').pop() || file
-                const dir = file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : ''
-                return (
-                  <button
-                    key={file}
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      insertFileMention(file)
-                    }}
-                    onMouseEnter={() => setSelectedMentionIndex(i)}
-                    className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${
-                      i === selectedMentionIndex ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:bg-bg-hover'
-                    }`}
-                  >
-                    <FileText size={12} className="shrink-0 opacity-60" />
-                    <span className="font-mono truncate">{fileName}</span>
-                    {dir && <span className="text-text-muted/50 text-[10px] truncate">{dir}</span>}
-                  </button>
-                )
-              })}
+              <div className="flex-1 overflow-y-auto">
+                {matchedFiles.map((file, i) => {
+                  const fileName = file.split('/').pop() || file
+                  const dir = file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : ''
+                  return (
+                    <button
+                      key={file}
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        insertFileMention(file)
+                      }}
+                      className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${
+                        i === selectedMentionIndex ? 'bg-accent/10 text-accent font-medium' : 'text-text-secondary hover:bg-bg-hover'
+                      }`}
+                    >
+                      <span className="truncate flex-1 font-mono">{fileName}</span>
+                      {dir && <span className="truncate text-[10px] text-text-muted">{dir}</span>}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           )}
 
-          {/* 输入框底部工具栏 */}
-          <div className="flex items-center justify-between px-3 pb-2.5">
-            {/* 左侧工具图标 */}
-            <div className="flex items-center gap-2">
+          {/* 拖拽提示层 */}
+          {isDragOver && (
+            <div className="mx-3.5 mb-2 rounded-lg border-2 border-dashed border-accent/40 bg-accent/5 p-2 text-center text-xs font-medium text-accent">
+              松开鼠标添加图片 / 文本文件
+            </div>
+          )}
+
+          {/* 工具条：模型/芯片/思维链 */}
+          <div className="flex items-center justify-between gap-2 px-3 pb-2 pt-1 border-t border-border-subtle/50">
+            {/* 左侧：附件与引用 */}
+            <div className="flex items-center gap-1.5 flex-wrap">
               <button
-                onClick={handleAttachFile}
-                className="icon-btn p-1.5"
-                title="附加文件"
+                onClick={() => {
+                  const input = document.createElement('input')
+                  input.type = 'file'
+                  input.onchange = (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0]
+                    if (file) {
+                      addAttachedFile((file as any).path || file.name)
+                    }
+                  }
+                  input.click()
+                }}
+                className="chip flex items-center gap-1 px-2 py-1 text-[11px] text-text-muted hover:text-text-secondary hover:bg-bg-hover rounded-md transition-colors"
+                title="上传附件（也可直接拖拽文件）"
               >
-                <Paperclip size={14} />
+                <Paperclip size={12} />
+                附件
               </button>
+
               <button
-                onClick={handleAttachFile}
-                className="icon-btn p-1.5"
-                title="@引用文件"
+                onClick={() => {
+                  setText(text + '@')
+                  textareaRef.current?.focus()
+                }}
+                className="chip flex items-center gap-1 px-2 py-1 text-[11px] text-text-muted hover:text-text-secondary hover:bg-bg-hover rounded-md transition-colors"
+                title="引用文件 (@)"
               >
-                <AtSign size={14} />
+                <AtSign size={12} />
+                引用
               </button>
-              {/* AI 专家选择按钮（非设计模式） / 设计风格选择按钮（设计模式） */}
+              {/* AI 专家选择 */}
               {currentMode === 'design' ? (
                 <>
                   <StylePicker />
@@ -542,10 +565,10 @@ export function GlobalChatInput(): React.ReactElement {
 
               <button
                 onClick={() => setNetworkSearchOn(!networkSearchOn)}
-                className={`chip flex items-center gap-1 px-2 py-0.5 text-[11px] transition-all duration-200 active:scale-95 ${
+                className={`chip flex items-center gap-1 px-2 py-1 text-[11px] rounded-md transition-colors ${
                   networkSearchOn
-                    ? 'border-accent/30 text-accent bg-accent/10'
-                    : 'text-text-muted hover:text-text-secondary'
+                    ? 'border-accent/40 text-accent bg-accent/10'
+                    : 'text-text-muted hover:text-text-secondary hover:bg-bg-hover'
                 }`}
                 title="联网搜索"
               >
@@ -553,18 +576,18 @@ export function GlobalChatInput(): React.ReactElement {
                 联网
               </button>
 
-              {/* Auto Mode 分级 — 所有模式通用 */}
+              {/* Auto Mode */}
               <button
                 onClick={() => {
                   const next = autoModeLevel === 'off' ? 'safe' : autoModeLevel === 'safe' ? 'yolo' : 'off'
                   setAutoModeLevel(next)
                 }}
-                className={`chip flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium transition-all duration-200 active:scale-95 ${
+                className={`chip flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-md transition-colors ${
                   autoModeLevel === 'yolo'
-                    ? 'border-red-500/30 text-red-400 bg-red-500/10'
+                    ? 'border-rose-500/40 text-rose-500 bg-rose-500/10'
                     : autoModeLevel === 'safe'
-                    ? 'border-accent/30 text-accent bg-accent/10'
-                    : 'text-text-muted hover:text-text-secondary'
+                    ? 'border-accent/40 text-accent bg-accent/10'
+                    : 'text-text-muted hover:text-text-secondary hover:bg-bg-hover'
                 }`}
                 title={autoModeLevel === 'off' ? '手动确认' : autoModeLevel === 'safe' ? '安全模式：仅读操作自动执行' : 'YOLO 模式：全部自动执行'}
               >
@@ -573,31 +596,27 @@ export function GlobalChatInput(): React.ReactElement {
               </button>
             </div>
 
-            {/* 右侧：模型选择 + 发送 */}
+            {/* 右侧：模型选择 + Google 标准发送按钮 */}
             <div className="flex items-center gap-2">
-              {streamingTokens !== null && isStreaming && (
-                <span className="text-[11px] text-text-muted">{streamingTokens.toLocaleString()} tokens</span>
-              )}
+              <StreamingTokenCount />
               <ModelSelector />
               <ReasoningSlider />
               {isStreaming ? (
                 <button
                   onClick={cancelStream}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-500 text-white shadow-[0_0_14px_rgba(239,68,68,0.45)] transition-all duration-200 hover:bg-red-600 hover:scale-105 active:scale-90 halo-pulse"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-600 text-white shadow-sm transition-colors hover:bg-rose-700 active:scale-[0.96]"
                   title="取消"
                 >
-                  <Square size={13} />
+                  <Square size={12} />
                 </button>
               ) : (
                 <button
                   onClick={handleSend}
                   disabled={!text.trim()}
-                  className={`btn-liquid flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none ${
-                    text.trim() ? 'halo-pulse hover:scale-105 active:scale-90' : ''
-                  }`}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent text-white dark:text-[#121212] shadow-sm transition-colors hover:brightness-105 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-30"
                   title="发送"
                 >
-                  <ArrowUp size={15} strokeWidth={2.5} />
+                  <ArrowUp size={14} strokeWidth={2.2} />
                 </button>
               )}
             </div>
@@ -609,30 +628,31 @@ export function GlobalChatInput(): React.ReactElement {
 
         {/* 斜杠命令弹出菜单 */}
         {showSlashMenu && (
-          <div className="glass-strong mt-2 rounded-2xl border border-border p-1.5 shadow-glass animate-scale-in">
-            {getSlashCommands(currentMode).map(({ cmd, label, systemHint }) => (
-              <button
-                key={cmd}
-                onClick={() => handleSlashCommand(cmd, systemHint)}
-                className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-left text-xs text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors"
-              >
-                <span className="font-mono text-accent">{cmd}</span>
-                <span className="text-text-muted">{label}</span>
-              </button>
-            ))}
+          <div className="panel mt-2 animate-scale-in">
+            <div className="flex-1 p-1.5">
+              {getSlashCommands(currentMode).map(({ cmd, label, systemHint }) => (
+                <button
+                  key={cmd}
+                  onClick={() => handleSlashCommand(cmd, systemHint)}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-xs text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors"
+                >
+                  <span className="font-mono text-accent">{cmd}</span>
+                  <span className="text-text-muted">{label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
         {/* 模式专属底部工具区 */}
         <div className="mt-1.5">
-          {/* Office 模式：项目目录 + 内嵌浏览器 + 录制 + 技能 + 操控电脑开关 */}
+          {/* Office 模式：项目目录 + 内嵌浏览器 + 录制 + 技能 + 操控电脑开关 — 纯文字简约风 */}
           {currentMode === 'office' && (
-            <div className="flex items-center gap-1 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <button
                 onClick={openProject}
-                className="chip flex items-center gap-1 px-2 py-1 text-[11px] text-text-secondary hover:text-text-primary transition-all duration-200 active:scale-95"
+                className="chip px-2.5 py-1 text-[11px] text-text-secondary hover:text-text-primary transition-all duration-200 active:scale-95"
               >
-                <FolderOpen size={11} />
                 {projectPath ? projectPath.split(/[/\\]/).pop() : '打开项目目录'}
               </button>
               {projectPath && (
@@ -655,14 +675,13 @@ export function GlobalChatInput(): React.ReactElement {
                     toggleBrowser()
                   }
                 }}
-                className={`chip flex items-center gap-1 px-2 py-0.5 text-[11px] transition-all duration-200 active:scale-95 ${
+                className={`chip px-2.5 py-1 text-[11px] transition-all duration-200 active:scale-95 ${
                   browserOpen
                     ? 'border-accent/30 text-accent bg-accent/10'
                     : 'text-text-muted hover:text-text-secondary'
                 }`}
                 title={browserOpen ? (isBrowserRecording ? '正在录制，点击先保存录制内容' : '关闭内嵌浏览器') : '打开内嵌浏览器'}
               >
-                <Globe size={10} />
                 浏览器
               </button>
 
@@ -676,7 +695,7 @@ export function GlobalChatInput(): React.ReactElement {
                   }
                 }}
                 disabled={!browserOpen}
-                className={`chip flex items-center gap-1 px-2 py-0.5 text-[11px] transition-all duration-200 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${
+                className={`chip px-2.5 py-1 text-[11px] transition-all duration-200 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${
                   isBrowserRecording
                     ? 'border-red-500/30 text-red-400 bg-red-500/10'
                     : browserOpen
@@ -685,7 +704,6 @@ export function GlobalChatInput(): React.ReactElement {
                 }`}
                 title={browserOpen ? (isBrowserRecording ? '停止录制' : '录制浏览器操作') : '需先打开浏览器'}
               >
-                <CircleDot size={10} />
                 {isBrowserRecording ? '停止录制' : '录制'}
               </button>
 
@@ -693,28 +711,25 @@ export function GlobalChatInput(): React.ReactElement {
               <div className="relative" ref={skillPickerRef}>
                 <button
                   onClick={() => setShowSkillPicker(!showSkillPicker)}
-                  className={`chip flex items-center gap-1 px-2 py-0.5 text-[11px] transition-all duration-200 active:scale-95 ${
+                  className={`chip px-2.5 py-1 text-[11px] transition-all duration-200 active:scale-95 ${
                     showSkillPicker ? 'border-accent/40 text-accent bg-accent/8' : 'text-text-muted hover:text-accent hover:border-accent/30'
                   }`}
                   title="调用已录制的技能"
                 >
-                  <Play size={10} />
                   技能
                   {skills.length > 0 && <span className="text-[9px] opacity-60">({skills.length})</span>}
                 </button>
 
                 {/* 技能列表弹出面板 */}
                 {showSkillPicker && (
-                  <div className="absolute bottom-full left-0 mb-2 w-[320px] max-h-[320px] rounded-xl border border-border-subtle bg-bg-elevated shadow-glass animate-fade-scale flex flex-col overflow-hidden z-50">
-                    <div className="px-3 py-1.5 text-[10px] text-text-muted border-b border-border-subtle">
-                      已录制技能 — 点击调用
-                    </div>
+                  <div className="panel absolute bottom-full left-0 mb-2 w-[320px] max-h-[320px] flex flex-col z-50 animate-fade-scale">
+                    <div className="panel__header">已录制技能 — 点击调用</div>
                     <div className="flex-1 overflow-y-auto">
                       {skills.length === 0 ? (
                         <div className="px-3 py-4 text-center text-xs text-text-muted">
                           暂无已录制技能
                           <br />
-                          <span className="text-[10px]">打开浏览器后点击"录制"按钮开始录制</span>
+                          <span className="text-[10px]">打开浏览器后点击「录制」按钮开始录制</span>
                         </div>
                       ) : (
                         skills.map((skill) => (
@@ -724,7 +739,7 @@ export function GlobalChatInput(): React.ReactElement {
                               sendMessage(`请使用 skill_invoke(skill_name="${skill.name}") 调用技能 "${skill.name}"。`, { skipNetworkHint: true })
                               setShowSkillPicker(false)
                             }}
-                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors hover:bg-bg-hover"
+                            className="panel__item"
                           >
                             <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent">
                               <Play size={9} />
@@ -745,14 +760,13 @@ export function GlobalChatInput(): React.ReactElement {
               {/* 操控电脑 */}
               <button
                 onClick={() => void toggleComputerUse()}
-                className={`chip flex items-center gap-1.5 px-2 py-0.5 text-[11px] transition-all duration-200 active:scale-95 ${
+                className={`chip px-2.5 py-1 text-[11px] transition-all duration-200 active:scale-95 ${
                   computerUseRunning
                     ? 'border-green-500/30 text-green-400 bg-green-500/10'
                     : 'text-text-muted hover:text-text-secondary'
                 }`}
                 title={computerUseRunning ? '操控电脑运行中 — 点击关闭' : '启动操控电脑'}
               >
-                <Cpu size={10} />
                 操控电脑
                 <span
                   className={`relative inline-flex h-3 w-5 items-center rounded-full transition-colors duration-200 ${
@@ -771,12 +785,11 @@ export function GlobalChatInput(): React.ReactElement {
 
           {/* Code 模式：打开项目 + 斜杠命令快捷行 */}
           {currentMode === 'coding' && (
-            <div className="flex items-center gap-1 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <button
                 onClick={openProject}
-                className="chip flex items-center gap-1 px-2 py-0.5 text-[11px] border-accent/25 text-accent hover:bg-accent/10 transition-all duration-200 active:scale-95"
+                className="chip px-2.5 py-1 text-[11px] border-accent/25 text-accent hover:bg-accent/10 transition-all duration-200 active:scale-95"
               >
-                <FolderOpen size={10} />
                 {projectPath ? projectPath.split(/[/\\]/).pop() : '打开项目'}
               </button>
               {projectPath && (
@@ -796,7 +809,8 @@ export function GlobalChatInput(): React.ReactElement {
                     const found = getSlashCommands(currentMode).find(c => c.cmd === cmd)
                     if (found) handleSlashCommand(cmd, found.systemHint)
                   }}
-                  className="chip px-2 py-0.5 text-[11px] text-text-muted hover:text-accent hover:border-accent/30 hover:bg-accent/5 transition-all duration-200 active:scale-95"
+                  className="chip px-2 py-1 text-[11px] text-text-muted hover:text-accent hover:border-accent/30 hover:bg-accent/5 transition-all duration-200 active:scale-95"
+                  title={label}
                 >
                   {cmd}
                 </button>
@@ -814,4 +828,16 @@ export function GlobalChatInput(): React.ReactElement {
       </div>
     </div>
   )
+}
+
+/**
+ * 流式 token 计数 — 独立订阅 streamingTokens。
+ * streamingTokens 每个流式 flush 都变化（~12fps），若由 GlobalChatInput 订阅，
+ * 会导致整个输入区（10+ 个子选择器）每次 flush 都全量重渲染。
+ */
+function StreamingTokenCount(): React.ReactElement | null {
+  const streamingTokens = useStore((s) => s.streamingTokens)
+  const isStreaming = useStore((s) => s.isStreaming)
+  if (streamingTokens === null || !isStreaming) return null
+  return <span className="text-[11px] text-text-muted">{streamingTokens.toLocaleString()} tokens</span>
 }

@@ -121,12 +121,16 @@ export async function runStream(
   const collectedToolCalls: ToolCall[] = []
   const collectedToolResults: ToolResult[] = []
 
-  // rAF 批处理：将高频流式更新合并到每帧一次
-  let rafId: number | null = null
+  // 流式更新节流：把高频 chunk 合并为 ~12fps 的批量更新。
+  // 之前用 rAF（~60fps）会导致流式期间整个 UI（含全部 markdown/代码高亮）每帧重渲染。
+  const FLUSH_INTERVAL_MS = 80
+  let flushTimer: ReturnType<typeof setTimeout> | null = null
+  let lastFlushAt = 0
   let dirty = false
 
   const flushStreamingUpdate = (): void => {
-    rafId = null
+    flushTimer = null
+    lastFlushAt = Date.now()
     if (!dirty) return
     dirty = false
     // 深拷贝 segments 供 store 使用
@@ -149,14 +153,17 @@ export async function runStream(
 
   const scheduleStreamingUpdate = (): void => {
     dirty = true
-    if (rafId !== null) return
-    rafId = requestAnimationFrame(flushStreamingUpdate)
+    if (flushTimer !== null) return
+    // 距上次刷新不足 FLUSH_INTERVAL_MS 时延迟到满间隔，保证流式 UI 平滑且低频
+    const elapsed = Date.now() - lastFlushAt
+    const delay = elapsed >= FLUSH_INTERVAL_MS ? 0 : FLUSH_INTERVAL_MS - elapsed
+    flushTimer = setTimeout(flushStreamingUpdate, delay)
   }
 
   const cancelPendingFlush = (): void => {
-    if (rafId !== null) {
-      cancelAnimationFrame(rafId)
-      rafId = null
+    if (flushTimer !== null) {
+      clearTimeout(flushTimer)
+      flushTimer = null
     }
     dirty = false
   }

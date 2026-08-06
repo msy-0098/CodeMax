@@ -22,14 +22,18 @@ let renderIndex = 0
 
 interface MermaidBlockProps {
   chart: string
+  /** 流式期间跳过 mermaid 渲染（不完整图表每次 flush 都会重复 render），结束后再渲染 */
+  streaming?: boolean
 }
 
-export function MermaidBlock({ chart }: MermaidBlockProps): React.ReactElement {
+export function MermaidBlock({ chart, streaming = false }: MermaidBlockProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
   const [svg, setSvg] = useState<string>('')
   const [error, setError] = useState<string>('')
 
+  // 流式期间不渲染（图表不完整，渲染必失败且浪费），等 streaming 结束后一次性渲染
   useEffect(() => {
+    if (streaming) return
     let cancelled = false
     const id = `mermaid-${renderIndex++}`
 
@@ -50,7 +54,16 @@ export function MermaidBlock({ chart }: MermaidBlockProps): React.ReactElement {
     return () => {
       cancelled = true
     }
-  }, [chart])
+  }, [chart, streaming])
+
+  // 流式期间：展示原始 mermaid 源码（等完整后再渲染成图表）
+  if (streaming) {
+    return (
+      <pre className="my-3 overflow-x-auto rounded-xl border border-border-subtle bg-[#0d1117] p-4 text-[13px] leading-6 font-mono text-text-primary">
+        <code>{chart}</code>
+      </pre>
+    )
+  }
 
   if (error) {
     return (

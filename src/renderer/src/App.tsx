@@ -72,9 +72,14 @@ export default function App(): React.ReactElement {
   const openProject = useStore((s) => s.openProject)
   const projectPath = useStore((s) => s.projectPath)
 
-  // ---- 侧栏拖拽宽度 ----
+  // ---- 侧栏拖拽宽度与折叠状态 ----
   const [leftWidth, setLeftWidth] = useState(240)
   const [rightWidth, setRightWidth] = useState(280)
+  const [leftCollapsed, setLeftCollapsed] = useState(false)
+  const [rightCollapsed, setRightCollapsed] = useState(false)
+
+  const toggleLeftSidebar = useCallback(() => setLeftCollapsed((prev) => !prev), [])
+  const toggleRightSidebar = useCallback(() => setRightCollapsed((prev) => !prev), [])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
@@ -127,6 +132,11 @@ export default function App(): React.ReactElement {
     void init().then(() => setLoaded(true))
   }, [init])
 
+  // 上报流式状态给主进程：空闲时允许后台节流，流式时放开（保证后台 Agent 流畅）
+  useEffect(() => {
+    window.api.streaming.setActive(isStreaming)
+  }, [isStreaming])
+
   // 窗口最大化状态 — 最大化时移除圆角（全屏不应有圆角）
   useEffect(() => {
     const applyMaximized = (maximized: boolean): void => {
@@ -177,33 +187,35 @@ export default function App(): React.ReactElement {
 
   // 主界面内容 — 启动动画期间作为 children 隐藏挂载，溶解转场时逐步显现
   const mainContent = (loaded && settings) ? (
-    <div className="relative flex h-full flex-col overflow-hidden bg-bg-base">
-      {/* 极光环境光背景（科技感氛围层，reduced-motion 时自动隐藏） */}
-      <div className="ambient-stage" aria-hidden="true">
-        <div className="ambient-orb ambient-orb-1" />
-        <div className="ambient-orb ambient-orb-2" />
-        <div className="ambient-orb ambient-orb-3" />
-      </div>
-
-      {/* 顶部导航栏 */}
-      <TitleBar />
+    <div className="relative flex h-full flex-col overflow-hidden bg-bg-base font-sans selection:bg-[#ff6b00]/20">
+      {/* 顶部导航栏 — 支持侧边栏折叠控制 */}
+      <TitleBar
+        leftCollapsed={leftCollapsed}
+        rightCollapsed={rightCollapsed}
+        onToggleLeft={toggleLeftSidebar}
+        onToggleRight={toggleRightSidebar}
+      />
 
       {/* 主体区域：左侧边栏 + 主内容区（含输入框）+ 右侧辅助栏 */}
       <div className="relative z-10 flex min-h-0 flex-1 overflow-hidden">
-        {/* 左侧边栏 — 可拖拽宽度 */}
-        <div style={{ width: `${leftWidth}px`, flexShrink: 0 }} className="h-full">
-          <Sidebar />
-        </div>
-        <ResizableDivider
-          side="left"
-          width={leftWidth}
-          minWidth={180}
-          maxWidth={480}
-          onResize={setLeftWidth}
-        />
+        {/* 左侧边栏 — 支持一键折叠与平滑过渡 */}
+        {!leftCollapsed && (
+          <>
+            <div style={{ width: `${leftWidth}px`, flexShrink: 0 }} className="h-full transition-all duration-200 ease-out">
+              <Sidebar onToggleCollapse={toggleLeftSidebar} />
+            </div>
+            <ResizableDivider
+              side="left"
+              width={leftWidth}
+              minWidth={180}
+              maxWidth={480}
+              onResize={setLeftWidth}
+            />
+          </>
+        )}
 
         {/* 主内容区 — 内容 + 底部输入框 */}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-bg-base">
           {/* 可滚动内容区 — flex column 确保内部滚动容器高度正确 */}
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <Suspense fallback={null}>
@@ -220,17 +232,21 @@ export default function App(): React.ReactElement {
           </Suspense>
         </div>
 
-        {/* 右侧辅助栏 — 可拖拽宽度 */}
-        <ResizableDivider
-          side="right"
-          width={rightWidth}
-          minWidth={240}
-          maxWidth={800}
-          onResize={setRightWidth}
-        />
-        <div style={{ width: `${rightWidth}px`, flexShrink: 0 }} className="h-full">
-          <RightSidebar />
-        </div>
+        {/* 右侧辅助栏 — 支持一键折叠 */}
+        {!rightCollapsed && (
+          <>
+            <ResizableDivider
+              side="right"
+              width={rightWidth}
+              minWidth={240}
+              maxWidth={800}
+              onResize={setRightWidth}
+            />
+            <div style={{ width: `${rightWidth}px`, flexShrink: 0 }} className="h-full transition-all duration-200 ease-out">
+              <RightSidebar onToggleCollapse={toggleRightSidebar} />
+            </div>
+          </>
+        )}
       </div>
 
       {/* AI 专家库面板 */}

@@ -43,6 +43,7 @@ export function CanvasCard({ item, onMouseDown, onRemove }: {
 
       <button
         onClick={(e) => { e.stopPropagation(); onRemove() }}
+        onMouseDown={(e) => e.stopPropagation()}
         className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:scale-110"
         title="删除"
       >

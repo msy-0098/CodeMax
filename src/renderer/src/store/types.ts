@@ -162,6 +162,11 @@ export interface StoreState {
   newConversation: (mode?: Mode) => string | null
   selectConversation: (id: string) => void
   deleteConversation: (id: string) => void
+  /**
+   * 手动压缩会话上下文：旧消息（最近 recentKeep 条之外）正文/思考链/工具结果一律截断。
+   * 返回本次压缩预估节省的 token 数（未压缩任何内容时返回 0）。
+   */
+  compressConversation: (id: string) => Promise<number>
   renameConversation: (id: string, title: string) => void
   clearAllConversations: () => void
 

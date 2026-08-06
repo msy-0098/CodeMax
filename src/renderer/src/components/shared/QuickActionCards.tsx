@@ -36,7 +36,7 @@ function ActionCategory({ group, onAction }: { group: ActionGroup; onAction: (a:
             className="ios-card group flex flex-col gap-1.5 p-3.5 text-left"
           >
             <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent transition-all duration-300 group-hover:bg-accent/20 group-hover:shadow-glow group-hover:scale-105">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent transition-all duration-300 group-hover:bg-accent/20 group-hover:scale-105">
                 <Icon name={action.icon} size={14} />
               </div>
               <span className="text-sm font-medium text-text-primary">{action.label}</span>

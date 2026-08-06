@@ -2,6 +2,56 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 全局优化：减少动画抖动，改善流式输出体验 */
+@layer base {
+  * {
+    @apply antialiased;
+  }
+
+  /* 流式输出时减少重排 */
+  .streaming-content {
+    contain: layout style;
+    will-change: contents;
+  }
+
+  /* 优化滚动性能 */
+  .smooth-scroll {
+    scroll-behavior: smooth;
+    overflow-anchor: auto;
+  }
+
+  /* 减少动画抖动 */
+  @media (prefers-reduced-motion: no-preference) {
+    .animate-scale-in {
+      animation: scale-in 0.15s ease-out;
+    }
+
+    .animate-fade-in {
+      animation: fade-in 0.2s ease-out;
+    }
+  }
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
 /* ── webview 元素样式 ──
    Electron <webview> 默认 display:inline-flex + width/height:0
    需显式设置背景色和 display，避免透明窗口下黑屏 */
@@ -16,45 +66,49 @@ webview {
 }
 
 @layer base {
-  /* ── 浅色主题（默认）— 磨砂白玻璃 ── */
+  /* ── 浅色主题（Google Workspace 风格） ── */
   :root {
     color-scheme: light;
-    --theme-color: #3b82f6;
-    --theme-accent: var(--theme-color);
-    --theme-accent-hover: color-mix(in srgb, var(--theme-color) 85%, black);
-    --theme-accent-muted: color-mix(in srgb, var(--theme-color) 70%, white);
+    --theme-color: #1a73e8;
+    --theme-accent: #1a73e8;
+    --theme-accent-hover: #1557b0;
+    --theme-accent-muted: rgba(26, 115, 232, 0.12);
 
     --bg-base: #f8f9fa;
     --bg-surface: #ffffff;
     --bg-elevated: #f1f3f4;
-    --bg-hover: rgba(20, 30, 50, 0.06);
+    --bg-hover: rgba(60, 64, 67, 0.08);
     --bg-input: #ffffff;
 
-    /* 玻璃材质 — 浅色主题：不透明白底，避免灰色透出 */
     --glass-bg: #ffffff;
     --glass-bg-strong: #ffffff;
-    --glass-border: rgba(20, 30, 50, 0.08);
-    --glass-highlight: rgba(255, 255, 255, 0.5);
-    --glass-shadow: 0 8px 32px rgba(31, 45, 74, 0.12), 0 1.5px 6px rgba(31, 45, 74, 0.08);
-    --glow-color: color-mix(in srgb, var(--theme-color) 38%, transparent);
+    --glass-border: #dadce0;
+    --glass-highlight: rgba(255, 255, 255, 0.8);
+    --glass-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+    --glow-color: rgba(26, 115, 232, 0.15);
 
     --border-DEFAULT: #dadce0;
-    --border-subtle: #f1f3f4;
+    --border-subtle: #e8eaed;
     --border-hover: #bdc1c6;
 
-    --accent-DEFAULT: var(--theme-color);
-    --accent-hover: var(--theme-accent-hover);
-    --accent-muted: var(--theme-accent-muted);
-    --accent-light: color-mix(in srgb, var(--theme-color) 70%, white);
+    --accent-DEFAULT: #1a73e8;
+    --accent-hover: #1557b0;
+    --accent-muted: rgba(26, 115, 232, 0.12);
+    --accent-light: rgba(26, 115, 232, 0.08);
 
-    --text-primary: #141c2b;
-    --text-secondary: #5a6472;
-    --text-muted: #9aa3af;
+    --text-primary: #202124;
+    --text-secondary: #5f6368;
+    --text-muted: #80868b;
 
     /* 极光环境光 */
     --orb-1: color-mix(in srgb, var(--theme-color) 34%, transparent);
     --orb-2: rgba(56, 189, 248, 0.26);
     --orb-3: rgba(168, 130, 255, 0.22);
+
+    /* 模式空状态背景 — 浅色系：通过色度差异区分功能区域 */
+    --mode-bg-office: #f5f6f8;
+    --mode-bg-coding: #f8fafc;
+    --mode-bg-design: #f7f6fb;
 
     /* 缓动 */
     --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
@@ -62,38 +116,43 @@ webview {
     --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   }
 
-  /* ── 深色主题 — 深空墨蓝 + 极光 ── */
+  /* ── 深色主题（Google Material 经典深黑 #121212 风格） ── */
   .dark {
     color-scheme: dark;
-    --bg-base: #202124;
-    --bg-surface: #292a2d;
-    --bg-elevated: #303134;
-    --bg-hover: rgba(255, 255, 255, 0.06);
-    --bg-input: #292a2d;
+    --theme-color: #8ab4f8;
+    --theme-accent: #8ab4f8;
+    --theme-accent-hover: #aecbfa;
+    --theme-accent-muted: rgba(138, 180, 248, 0.18);
 
-    --glass-bg: rgba(24, 28, 38, 0.58);
-    --glass-bg-strong: rgba(28, 32, 43, 0.82);
-    --glass-border: rgba(255, 255, 255, 0.09);
-    --glass-highlight: rgba(255, 255, 255, 0.12);
-    --glass-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3);
-    --glow-color: color-mix(in srgb, var(--theme-color) 55%, transparent);
+    --bg-base: #121212;
+    --bg-surface: #1e1e1e;
+    --bg-elevated: #2d2d2d;
+    --bg-hover: rgba(255, 255, 255, 0.08);
+    --bg-input: #1e1e1e;
+
+    /* 模式空状态背景 — 深色统一使用标准暗黑 121212 */
+    --mode-bg-office: #121212;
+    --mode-bg-coding: #121212;
+    --mode-bg-design: #121212;
+
+    --glass-bg: #1e1e1e;
+    --glass-bg-strong: #252526;
+    --glass-border: #3c4043;
+    --glass-highlight: rgba(255, 255, 255, 0.05);
+    --glass-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5);
 
     --border-DEFAULT: #3c4043;
-    --border-subtle: #303134;
+    --border-subtle: #2d2d2d;
     --border-hover: #5f6368;
 
-    --accent-DEFAULT: var(--theme-color);
-    --accent-hover: color-mix(in srgb, var(--theme-color) 88%, white);
-    --accent-muted: color-mix(in srgb, var(--theme-color) 70%, black);
-    --accent-light: #60a5fa;
+    --accent-DEFAULT: #8ab4f8;
+    --accent-hover: #aecbfa;
+    --accent-muted: rgba(138, 180, 248, 0.2);
+    --accent-light: rgba(138, 180, 248, 0.1);
 
-    --text-primary: #f2f4f8;
-    --text-secondary: #a3aab8;
-    --text-muted: #646b78;
-
-    --orb-1: color-mix(in srgb, var(--theme-color) 30%, transparent);
-    --orb-2: rgba(34, 211, 238, 0.13);
-    --orb-3: rgba(147, 96, 255, 0.16);
+    --text-primary: #e8eaed;
+    --text-secondary: #9aa0a6;
+    --text-muted: #70757a;
   }
 
   * {
@@ -113,17 +172,13 @@ webview {
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
     letter-spacing: -0.011em;
-    /* 透明窗口 — body 背景必须透明，让桌面透过圆角可见 */
-    background: transparent;
+    /* 不透明窗口 — 直接铺应用底色，避免启动期露出白/黑窗底 */
+    background: var(--bg-base);
   }
 
-  /* 真圆角窗口 — #root 裁剪内容为圆角，最大化时移除 */
+  /* 窗口改为不透明后圆角不再需要（圆角依赖透明窗口） */
   #root {
-    border-radius: 10px;
     overflow: hidden;
-  }
-  .window-maximized #root {
-    border-radius: 0;
   }
 
   ::selection {
@@ -174,19 +229,15 @@ webview {
     border-radius: 20px;
   }
 
-  /* 卡片 — 悬浮玻璃卡 */
+  /* 卡片 — 简约面板（去 AI 玻璃/辉光风格） */
   .ios-card {
-    background: var(--bg-elevated);
-    border: 1px solid var(--glass-border);
-    box-shadow: inset 0 1px 0 var(--glass-highlight), 0 4px 16px rgba(0, 0, 0, 0.06);
-    border-radius: 18px;
-    transition: transform 0.3s var(--ease-out-quart), box-shadow 0.3s var(--ease-out-quart),
-      border-color 0.25s ease;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
   }
   .ios-card:hover {
-    transform: translateY(-2px);
-    border-color: color-mix(in srgb, var(--theme-color) 35%, var(--glass-border));
-    box-shadow: inset 0 1px 0 var(--glass-highlight), 0 10px 30px -6px var(--glow-color);
+    border-color: color-mix(in srgb, var(--theme-color) 35%, var(--border-subtle));
   }
 
   /* 渐变描边（光从边缘流过） */
@@ -297,29 +348,29 @@ webview {
   .ambient-orb {
     position: absolute;
     border-radius: 9999px;
-    filter: blur(60px);
+    filter: blur(28px);
     will-change: transform;
     contain: strict;
   }
   .ambient-orb-1 {
-    width: 38vw;
-    height: 38vw;
+    width: 30vw;
+    height: 30vw;
     top: -14%;
     left: -8%;
     background: radial-gradient(circle, var(--orb-1), transparent 68%);
     animation: orbDrift1 32s ease-in-out infinite alternate;
   }
   .ambient-orb-2 {
-    width: 30vw;
-    height: 30vw;
+    width: 24vw;
+    height: 24vw;
     top: 12%;
     right: -10%;
     background: radial-gradient(circle, var(--orb-2), transparent 68%);
     animation: orbDrift2 40s ease-in-out infinite alternate;
   }
   .ambient-orb-3 {
-    width: 34vw;
-    height: 34vw;
+    width: 26vw;
+    height: 26vw;
     bottom: -18%;
     left: 28%;
     background: radial-gradient(circle, var(--orb-3), transparent 66%);
@@ -395,6 +446,70 @@ webview {
     height: 1px;
     background: linear-gradient(90deg, transparent, var(--border-DEFAULT), transparent);
   }
+
+  /* ═══ 统一弹出面板（下拉/弹层）规范 ═══
+     所有选择器、下拉、浮层的视觉基线 — 保证对话框风格统一 */
+  .panel {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    box-shadow: var(--glass-shadow);
+    overflow: hidden;
+  }
+  .panel__header {
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .panel__body {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 6px;
+  }
+  .panel__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    text-align: left;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    cursor: pointer;
+  }
+  .panel__item:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+  .panel__item--active {
+    background: color-mix(in srgb, var(--theme-color) 10%, transparent);
+    color: var(--theme-color);
+  }
+  .panel__section {
+    padding: 6px 10px 4px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  /* 面板分隔线（次级导航与内容区之间） */
+  .panel__divider {
+    width: 1px;
+    background: var(--border-subtle);
+    margin: 6px 0;
+  }
+  /* 模式空状态背景 */
+  .mode-bg-office { background: var(--mode-bg-office); }
+  .mode-bg-coding { background: var(--mode-bg-coding); }
+  .mode-bg-design { background: var(--mode-bg-design); }
 
   /* 拖拽区域 */
   .drag-region {
@@ -536,20 +651,69 @@ webview {
 50% { box-shadow: 0 0 24px color-mix(in srgb, var(--theme-color) 90%, transparent), 0 0 36px color-mix(in srgb, hsl(42, 95%, 62%) 40%, transparent); transform: scale(1.25); }
 }
 
-/* 思考强度粒子拖尾 — 从圆点向左飘散，支持每档不同速度和距离 */
-@keyframes effortParticle {
-  0% {
-    opacity: 0.95;
-    transform: translateY(-50%) translateX(0) scale(1);
-  }
-  40% {
-    opacity: 0.6;
-    transform: translateY(calc(-50% + var(--ep-y, 0px))) translateX(calc(var(--ep-dist, 20px) * -0.4)) scale(0.8);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(calc(-50% + var(--ep-y, 0px) * 0.5)) translateX(calc(var(--ep-dist, 20px) * -1)) scale(0.2);
-  }
+/* ═══ 思考强度滑块 — Ultra 璀璨紫色水晶 ═══
+   圆角方块 + 紫晶渐变 + 顶部高光 + 柔和辉光（克制的"水晶感"） */
+@keyframes ultraSoftGlow {
+  0%, 100% { box-shadow: 0 0 6px rgba(168, 85, 247, 0.45), 0 0 14px rgba(139, 92, 246, 0.28); }
+  50% { box-shadow: 0 0 10px rgba(168, 85, 247, 0.7), 0 0 22px rgba(139, 92, 246, 0.45); }
+}
+.ultra-thumb {
+  position: relative;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: linear-gradient(145deg, #e9d5ff 0%, #c084fc 30%, #8b5cf6 60%, #6d28d9 100%);
+  animation: ultraSoftGlow 2.6s ease-in-out infinite;
+}
+.ultra-thumb::after {
+  content: '';
+  position: absolute;
+  top: 1.5px;
+  left: 2px;
+  width: 46%;
+  height: 34%;
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.05));
+  pointer-events: none;
+}
+.ultra-track {
+  background: linear-gradient(90deg, #7c3aed, #a855f7 50%, #c084fc);
+}
+.ultra-chip {
+  border-color: rgba(168, 85, 247, 0.5);
+  color: #d8b4fe;
+  background: rgba(168, 85, 247, 0.12);
+}
+
+/* ═══ 思考强度滑块 — Max 炽热渐变 ═══ */
+@keyframes maxSoftGlow {
+  0%, 100% { box-shadow: 0 0 6px rgba(249, 115, 22, 0.4); }
+  50% { box-shadow: 0 0 12px rgba(249, 115, 22, 0.6); }
+}
+.max-thumb {
+  position: relative;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: linear-gradient(145deg, #ffd08a 0%, #ff9d5c 40%, #f97316 75%, #ef4444 100%);
+  animation: maxSoftGlow 2.6s ease-in-out infinite;
+}
+.max-thumb::after {
+  content: '';
+  position: absolute;
+  top: 1.5px;
+  left: 2px;
+  width: 46%;
+  height: 34%;
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.05));
+  pointer-events: none;
+}
+.max-track {
+  background: linear-gradient(90deg, #fbbf24, #f97316 55%, #ef4444);
+}
+.max-chip {
+  border-color: rgba(249, 115, 22, 0.45);
+  color: #fb923c;
+  background: rgba(249, 115, 22, 0.1);
 }
 
 /* 通用动效类 */

@@ -1,26 +1,27 @@
 import { useEffect, useRef } from 'react'
-import { FolderOpen, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useStore } from '../../store/useStore'
 import { MODE_CONFIGS } from '../../modes'
 import { MessageItem } from '../MessageItem'
 import { ToolPanel } from '../ToolPanel'
+import { useCappedMessages } from '../../hooks/useCappedMessages'
 import type { Mode } from '../../../../shared/types'
 import { getModelLabel } from '../../../../shared/model-label'
 
-// 功能胶囊按钮（空状态下隐藏导出，因为无内容可导出）
+// 功能胶囊按钮（空状态下隐藏导出，因为无内容可导出）— 纯文字简约风
 const CAPSULE_ACTIONS = [
-    { id: 'ppt', label: '生成 PPT', icon: '📊', prompt: '请帮我生成一份PPT大纲和内容。主题：[请填写主题]\n\n请先给出PPT的目录结构，然后逐页生成内容（每页包含标题、要点和备注）。' },
-    { id: 'data', label: '数据分析', icon: '📈', prompt: '请帮我进行数据分析。请先描述数据来源和分析目的，我将使用搜索工具获取相关数据并进行分析：\n\n分析主题：[请填写]\n关注指标：[请填写]' },
-    { id: 'research', label: '深度研究', icon: '🔍', prompt: '请对以下话题进行深度研究：[话题]\n\n请搜索多个来源、综合分析后生成研究摘要，包含背景、现状、趋势和结论。' },
-    { id: 'doc', label: '生成文档', icon: '📝', prompt: '请帮我生成一份专业文档。\n\n文档类型：[报告/方案/纪要/说明书]\n主题：[请填写]\n受众：[请填写]\n\n请输出结构清晰、专业得体的文档。' }
+    { id: 'ppt', label: '生成 PPT', prompt: '请帮我生成一份PPT大纲和内容。主题：[请填写主题]\n\n请先给出PPT的目录结构，然后逐页生成内容（每页包含标题、要点和备注）。' },
+    { id: 'data', label: '数据分析', prompt: '请帮我进行数据分析。请先描述数据来源和分析目的，我将使用搜索工具获取相关数据并进行分析：\n\n分析主题：[请填写]\n关注指标：[请填写]' },
+    { id: 'research', label: '深度研究', prompt: '请对以下话题进行深度研究：[话题]\n\n请搜索多个来源、综合分析后生成研究摘要，包含背景、现状、趋势和结论。' },
+    { id: 'doc', label: '生成文档', prompt: '请帮我生成一份专业文档。\n\n文档类型：[报告/方案/纪要/说明书]\n主题：[请填写]\n受众：[请填写]\n\n请输出结构清晰、专业得体的文档。' }
   ]
 
-/** 技能录制与复用 + 语义化桌面操控 — 后台工具切换（不发 Prompt 给 Agent） */
+/** 技能录制与复用 + 语义化桌面操控 — 后台工具切换（不发 Prompt 给 Agent）— 纯文字简约风 */
 const SKILL_CAPSULES = [
-{ id: 'record', label: '🔴 录制技能', action: 'toggleRecording' as const },
-{ id: 'invoke', label: '🔄 调用技能', action: 'invokeSkill' as const },
-{ id: 'desktop', label: '🖥️ 操控电脑', action: 'toggleComputerUse' as const },
-{ id: 'browser', label: '🌐 内嵌浏览器', action: 'toggleBrowser' as const },
+{ id: 'record', label: '录制技能', action: 'toggleRecording' as const },
+{ id: 'invoke', label: '调用技能', action: 'invokeSkill' as const },
+{ id: 'desktop', label: '操控电脑', action: 'toggleComputerUse' as const },
+{ id: 'browser', label: '内嵌浏览器', action: 'toggleBrowser' as const },
 ]
 
 export function OfficeLayout(): React.ReactElement {
@@ -42,6 +43,9 @@ export function OfficeLayout(): React.ReactElement {
   const setProjectPath = useStore((s) => s.setProjectPath)
   const projectPath = useStore((s) => s.projectPath)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // 只渲染最近 N 条消息，长对话下避免 DOM 无限增长 / 流式时全量遍历历史
+  const { visible, hiddenCount, loadEarlier } = useCappedMessages(conversation?.messages ?? [], scrollRef)
 
   // 后台工具切换 actions
   const toggleBrowser = useStore((s) => s.toggleBrowser)
@@ -101,7 +105,7 @@ export function OfficeLayout(): React.ReactElement {
   // 主入口状态 — 只展示内容，输入框由 GlobalChatInput 统一管理
   if (isEmpty) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="mode-bg-office flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 animate-fade-in">
           <div className="w-full max-w-2xl">
             {/* 大标题 */}
@@ -109,13 +113,12 @@ export function OfficeLayout(): React.ReactElement {
               Work with <span className="text-accent">CodeMax</span>
             </h1>
 
-            {/* 输入框下方下拉配置项 */}
+            {/* 输入框下方下拉配置项 — 纯文字 */}
             <div className="mt-2 flex items-center justify-center gap-2">
               <button
                 onClick={handleOpenFolder}
-                className="chip flex items-center gap-1 px-2 py-1 text-[11px] text-text-secondary hover:text-text-primary transition-all duration-200 active:scale-95"
+                className="chip px-2.5 py-1 text-[11px] text-text-secondary hover:text-text-primary transition-all duration-200 active:scale-95"
               >
-                <FolderOpen size={11} />
                 {projectPath ? projectPath.split(/[/\\]/).pop() : '打开项目目录'}
               </button>
               {projectPath && (
@@ -129,7 +132,7 @@ export function OfficeLayout(): React.ReactElement {
               )}
             </div>
 
-            {/* 功能胶囊 */}
+            {/* 功能胶囊 — 纯文字 */}
             <div className="mt-6 flex items-center justify-center gap-3">
               {CAPSULE_ACTIONS.map((action) => (
                 <button
@@ -137,9 +140,8 @@ export function OfficeLayout(): React.ReactElement {
                   onClick={() => {
                     sendMessage(action.prompt, { skipNetworkHint: true })
                   }}
-                  className="chip group flex items-center gap-1.5 px-4 py-2 text-sm text-text-secondary transition-all duration-200 hover:border-accent/40 hover:text-text-primary hover:shadow-glow hover:scale-105 active:scale-95"
+                  className="chip group px-4 py-2 text-sm text-text-secondary transition-all duration-200 hover:border-accent/40 hover:text-text-primary hover:scale-[1.02] active:scale-95"
                 >
-                  <span>{action.icon}</span>
                   <span>{action.label}</span>
                 </button>
               ))}
@@ -158,8 +160,8 @@ export function OfficeLayout(): React.ReactElement {
                     key={capsule.id}
                     onClick={() => handleSkillAction(capsule.action)}
                     disabled={isDisabled}
-                    className={`chip group flex items-center gap-1.5 px-4 py-2 text-sm transition-all duration-200 hover:border-accent/40 hover:text-text-primary hover:shadow-glow hover:scale-105 active:scale-95 ${
-                      isActive ? 'border-accent/40 text-accent shadow-glow' : 'text-text-secondary'
+                    className={`chip group px-4 py-2 text-sm transition-all duration-200 hover:border-accent/40 hover:text-text-primary hover:scale-[1.02] active:scale-95 ${
+                      isActive ? 'border-accent/40 text-accent' : 'text-text-secondary'
                     } ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
                   >
                     <span>{capsule.label}</span>
@@ -193,8 +195,15 @@ export function OfficeLayout(): React.ReactElement {
       <ToolPanel />
       <div ref={scrollRef} className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
         <div className={`mx-auto max-w-3xl space-y-5 px-4 py-6 chat-fs-${fontSize}`}>
-          {conversation!.messages.map((msg, idx) => {
-            const isLast = idx === conversation!.messages.length - 1
+          {hiddenCount > 0 && (
+            <div className="flex justify-center pt-1">
+              <button onClick={loadEarlier} className="chip px-3 py-1 text-[11px] text-accent border-accent/25 bg-accent/10 hover:bg-accent/15 transition-colors">
+                查看更早的 {hiddenCount} 条消息
+              </button>
+            </div>
+          )}
+          {visible.map((msg, idx) => {
+            const isLast = idx === visible.length - 1
             const isStreamingMsg = isStreamingThis && isLast && msg.role === 'assistant' && !msg.content
             return (
               <MessageItem
@@ -225,7 +234,7 @@ function ChatHeader({ mode, title, onExport }: { mode: Mode; title?: string; onE
   const modelLabel = settings ? getModelLabel(settings) : model
   const config = MODE_CONFIGS[mode]
   return (
-    <div className="flex items-center justify-between border-b border-border-subtle glass px-5 py-2.5 shrink-0">
+    <div className="flex items-center justify-between border-b border-border-subtle bg-bg-surface px-5 py-2.5 shrink-0">
       <div className="flex items-center gap-2 no-drag">
         <span className="text-sm font-medium text-text-secondary">{config.name}</span>
         {title && <><span className="text-text-muted">·</span><span className="text-sm text-text-primary">{title}</span></>}

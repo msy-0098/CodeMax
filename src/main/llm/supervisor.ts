@@ -16,7 +16,7 @@ import { toApiEffort } from './api'
 // ---------- 类型 ----------
 
 export interface SupervisionResult {
-  verdict: 'on_track' | 'lazy' | 'off_track' | 'violation'
+  verdict: 'on_track' | 'lazy' | 'off_track' | 'violation' | 'quality' | 'completeness'
   issues: string[]
   correction?: string
   severity: 'low' | 'medium' | 'high'
@@ -40,7 +40,7 @@ export interface AgentRoundSnapshot {
 // ---------- 常量 ----------
 
 /** 监督 Agent 超时（毫秒）— 超时则跳过本轮监督 */
-const SUPERVISOR_TIMEOUT_MS = 30_000
+const SUPERVISOR_TIMEOUT_MS = 15_000  // 从 30s 减少到 15s，避免卡住太久
 
 /** 监督 Agent 系统提示词 */
 const SUPERVISOR_SYSTEM_PROMPT = `你是监督审查 Agent，负责监督主 Agent 的工作质量。
@@ -52,12 +52,14 @@ const SUPERVISOR_SYSTEM_PROMPT = `你是监督审查 Agent，负责监督主 Age
 2. **跑偏 (off_track)**：偏离用户原始任务目标、做无关的改进或重构、插入无关的技术闲聊
 3. **违规 (violation)**：违反五锁协议——未确认计划就写代码、超出确认范围修改、遇到不确定时猜测而非上报、未验证就标记完成、引入未经许可的依赖
 4. **正常 (on_track)**：主 Agent 正在正确执行任务，无上述问题
+5. **质量问题 (quality)**: code quality issues - introduced new bugs, missed edge cases, incorrect logic, improper error handling
+6. **不完整 (completeness)**: incomplete work - didn't finish all subtasks requested by user, partially implemented features, missing parts
 
 ## 输出格式
 严格输出以下 JSON（不要输出其他任何内容）：
 \`\`\`json
 {
-  "verdict": "on_track | lazy | off_track | violation",
+  "verdict": "on_track | lazy | off_track | violation | quality | completeness",
   "issues": ["具体问题描述"],
   "correction": "如果发现问题，给出主 Agent 必须遵守的纠正指令；无问题则为空字符串",
   "severity": "low | medium | high"
@@ -197,7 +199,7 @@ function parseSupervisionResult(raw: string): SupervisionResult | null {
 
     // 验证字段
     const verdict = parsed.verdict
-    if (verdict !== 'on_track' && verdict !== 'lazy' && verdict !== 'off_track' && verdict !== 'violation') {
+    if (!['on_track', 'lazy', 'off_track', 'violation', 'quality', 'completeness'].includes(verdict)) {
       return null
     }
 
@@ -227,7 +229,9 @@ export function buildCorrectionMessage(result: SupervisionResult, round: number)
     on_track: '正常',
     lazy: '偷懒',
     off_track: '跑偏',
-    violation: '违规'
+    violation: '违规',
+    quality: '质量问题',
+    completeness: '不完整'
   }
 
   return `--- 监督审查（第 ${round} 轮）---

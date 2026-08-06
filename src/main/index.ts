@@ -60,7 +60,8 @@ function createWindow(): void {
     show: false,
     frame: false,
     autoHideMenuBar: true,
-    transparent: true,
+    // 透明窗口在 Windows 上走 DWM 分层合成路径，是持续卡顿的主要来源之一。
+    // 关闭透明改为不透明窗口，换取明显的整体渲染性能提升。
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,
@@ -87,6 +88,14 @@ function createWindow(): void {
     clearTimeout(showFallback)
     if (!mainWindow.isDestroyed() && !mainWindow.isVisible()) {
       mainWindow.show()
+    }
+  })
+
+  // 后台节流开关：空闲时允许 Chromium 节流（后台/最小化不再满速渲染，
+  // 避免长时间占用 CPU/GPU 拖慢整个系统）；流式期间临时放开以保证后台 Agent 流畅。
+  ipcMain.on('streaming:state', (_event, isStreaming: boolean) => {
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.setBackgroundThrottling(!isStreaming)
     }
   })
 

@@ -1,18 +1,9 @@
 import { useState } from 'react'
-import {
-  Plus,
-  Check,
-  RefreshCw,
-  Trash2,
-  Server,
-  Brain,
-  Sparkles,
-  MessageSquareText
-} from 'lucide-react'
-import { useStore } from '../../store/useStore'
-import type { AppSettings, ModelProvider, ReasoningEffort } from '../../../../shared/types'
+import { Plus, Brain, Sparkles, MessageSquareText } from 'lucide-react'
+import type { AppSettings, ModelProvider, ReasoningEffort, TestResult } from '@shared/types'
 import { genCustomProviderId } from '../../../../shared/providers'
 import { SectionTitle, Divider, ToggleRow } from './shared-components'
+import { ProviderCard } from './ProviderCard'
 
 /** 空表单模板 */
 function emptyForm(): ModelProvider {
@@ -26,13 +17,13 @@ export function ModelTab({
   local: AppSettings
   update: (patch: Partial<AppSettings>) => void
 }): React.ReactElement {
-  const switchProvider = useStore((s) => s.switchProvider)
-  const upsertProvider = useStore((s) => s.upsertProvider)
-  const removeProvider = useStore((s) => s.removeProvider)
   const [showForm, setShowForm] = useState(false)
   const [draft, setDraft] = useState<ModelProvider>(emptyForm())
   const [fetching, setFetching] = useState<string | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  // 每个服务商的连接测试状态
+  const [testing, setTesting] = useState<string | null>(null)
+  const [testResults, setTestResults] = useState<Record<string, TestResult>>({})
 
   const providers = local.providers ?? []
 
@@ -51,7 +42,7 @@ export function ModelTab({
         setDraft((d) => ({ ...d, models: [...new Set([...d.models, ...(res.models ?? [])])] }))
       } else {
         const merged = [...new Set([...provider.models, ...res.models])]
-        await upsertProvider({ ...provider, models: merged })
+        update({ providers: providers.map((p) => (p.id === provider.id ? { ...provider, models: merged } : p)) })
       }
     } catch (e) {
       setFetchError(e instanceof Error ? e.message : String(e))
@@ -60,7 +51,51 @@ export function ModelTab({
     }
   }
 
-  const handleSaveCustom = async (): Promise<void> => {
+  /** 测试服务商连接可用性 */
+  const handleTest = async (provider: ModelProvider): Promise<void> => {
+    const model = provider.models[0]
+    if (!model) return
+    setTesting(provider.id)
+    const result = await window.api.chat.test(provider.apiKey, provider.baseUrl, model)
+    setTestResults((prev) => ({ ...prev, [provider.id]: result }))
+    setTesting(null)
+  }
+
+  /** 切换服务商/模型 — 写入本地 draft，随「保存设置」统一持久化 */
+  const handleSwitch = (providerId: string, model?: string): void => {
+    const provider = providers.find((p) => p.id === providerId)
+    if (!provider) return
+    const nextModel = model ?? provider.models[0] ?? local.model
+    update({
+      activeProviderId: providerId,
+      baseUrl: provider.baseUrl,
+      apiKey: provider.apiKey,
+      model: nextModel
+    })
+  }
+
+  /** 更新单个服务商 — 写入本地 draft */
+  const handleUpdate = (provider: ModelProvider): void => {
+    update({ providers: providers.map((p) => (p.id === provider.id ? provider : p)) })
+  }
+
+  /** 删除服务商 — 若删除当前激活项则回退到第一个 */
+  const handleRemove = (providerId: string): void => {
+    const next = providers.filter((p) => p.id !== providerId)
+    const patch: Partial<AppSettings> = { providers: next }
+    if (local.activeProviderId === providerId) {
+      const fallback = next[0]
+      if (fallback) {
+        patch.activeProviderId = fallback.id
+        patch.baseUrl = fallback.baseUrl
+        patch.apiKey = fallback.apiKey
+        patch.model = fallback.models[0] ?? local.model
+      }
+    }
+    update(patch)
+  }
+
+  const handleSaveCustom = (): void => {
     if (!draft.name.trim() || !draft.baseUrl.trim()) return
     const provider: ModelProvider = {
       ...draft,
@@ -68,52 +103,33 @@ export function ModelTab({
       kind: 'custom',
       supportsThinking: draft.baseUrl.includes('deepseek.com')
     }
-    await upsertProvider(provider)
+    update({ providers: [...providers, provider] })
     setShowForm(false)
     setDraft(emptyForm())
   }
 
   return (
     <div className="space-y-5">
-      <SectionTitle title="模型服务商" desc="预设服务商一键切换，自定义服务商支持任意 OpenAI 兼容端点" />
+      <SectionTitle title="模型服务商" desc="预设服务商一键切换，自定义服务商支持任意 OpenAI 兼容端点；每个服务商可单独测试可用性" />
 
-      {providers.map((p) => (
-        <div key={p.id} className="rounded-xl border border-border-subtle bg-bg-elevated p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Server size={14} className="text-text-muted" />
-              <span className="text-sm font-semibold text-text-primary">{p.name}</span>
-              {p.id === local.activeProviderId && <Check size={14} className="text-accent" />}
-            </div>
-            <div className="flex items-center gap-1.5">
-              {p.id !== local.activeProviderId && (
-                <button onClick={() => void switchProvider(p.id)} className="chip text-[11px]">设为当前</button>
-              )}
-              <button onClick={() => void handleFetchModels(p)} disabled={fetching === p.id} className="chip text-[11px]">
-                <RefreshCw size={11} className={fetching === p.id ? 'animate-spin' : ''} />
-                {fetching === p.id ? '获取中' : '获取模型'}
-              </button>
-              {p.kind === 'custom' && (
-                <button onClick={() => void removeProvider(p.id)} className="chip text-[11px] text-red-400">
-                  <Trash2 size={11} /> 删除
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="mt-2 space-y-1.5 text-xs text-text-muted">
-            <div>Base URL：<span className="font-mono text-text-secondary">{p.baseUrl}</span></div>
-            <div>API Key：<input value={p.apiKey} onChange={(e) => void upsertProvider({ ...p, apiKey: e.target.value })} className="rounded border border-border bg-bg-elevated px-2 py-0.5 text-xs text-text-primary w-56" placeholder="sk-..." /></div>
-            <div className="flex flex-wrap gap-1">
-              {p.models.map((m) => (
-                <span key={m} className="chip text-[10px]">{m}
-                  <button onClick={() => void upsertProvider({ ...p, models: p.models.filter((x) => x !== m) })} className="ml-1 text-text-muted hover:text-red-400">×</button>
-                </span>
-              ))}
-              {p.models.length === 0 && <span className="text-text-muted">暂无模型，点击「获取模型」或手动添加</span>}
-            </div>
-          </div>
-        </div>
-      ))}
+      <div className="space-y-2.5">
+        {providers.map((p) => (
+          <ProviderCard
+            key={p.id}
+            provider={p}
+            isActive={p.id === local.activeProviderId}
+            activeModel={local.model}
+            fetching={fetching === p.id}
+            testing={testing === p.id}
+            testResult={testResults[p.id] ?? null}
+            onSwitch={handleSwitch}
+            onFetchModels={(prov) => void handleFetchModels(prov)}
+            onRemove={handleRemove}
+            onUpdate={handleUpdate}
+            onTest={(prov) => void handleTest(prov)}
+          />
+        ))}
+      </div>
 
       {fetchError && <p className="text-xs text-red-400">{fetchError}</p>}
 
@@ -122,15 +138,15 @@ export function ModelTab({
       )}
 
       {showForm && (
-        <div className="rounded-xl border border-border-subtle bg-bg-elevated p-4 space-y-2">
+        <div className="space-y-2 rounded-xl border border-border-subtle bg-bg-elevated/50 p-4">
           <SectionTitle title="自定义服务商" desc="填写 OpenAI 兼容端点信息" />
           <div className="grid grid-cols-1 gap-2 text-xs">
-            <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="名称（如 我的网关）" className="rounded border border-border bg-bg-elevated px-2 py-1.5" />
-            <input value={draft.baseUrl} onChange={(e) => setDraft({ ...draft, baseUrl: e.target.value })} placeholder="Base URL（如 https://api.example.com/v1）" className="rounded border border-border bg-bg-elevated px-2 py-1.5" />
-            <input value={draft.apiKey} onChange={(e) => setDraft({ ...draft, apiKey: e.target.value })} placeholder="API Key" className="rounded border border-border bg-bg-elevated px-2 py-1.5" />
+            <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="名称（如 我的网关）" className="rounded-lg border border-border bg-bg-input px-2.5 py-1.5 text-text-primary placeholder:text-text-muted focus:border-accent/50 focus:outline-none" />
+            <input value={draft.baseUrl} onChange={(e) => setDraft({ ...draft, baseUrl: e.target.value })} placeholder="Base URL（如 https://api.example.com/v1）" className="rounded-lg border border-border bg-bg-input px-2.5 py-1.5 text-text-primary placeholder:text-text-muted focus:border-accent/50 focus:outline-none" />
+            <input value={draft.apiKey} onChange={(e) => setDraft({ ...draft, apiKey: e.target.value })} type="password" placeholder="API Key" className="rounded-lg border border-border bg-bg-input px-2.5 py-1.5 text-text-primary placeholder:text-text-muted focus:border-accent/50 focus:outline-none" />
             <div className="flex items-center gap-1.5">
-              <input value={draft.models.join(', ')} onChange={(e) => setDraft({ ...draft, models: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} placeholder="模型名（逗号分隔，或用下方按钮拉取）" className="flex-1 rounded border border-border bg-bg-elevated px-2 py-1.5" />
-              <button onClick={() => void handleFetchModels(draft)} disabled={fetching === 'draft'} className="chip text-[11px] shrink-0">获取模型</button>
+              <input value={draft.models.join(', ')} onChange={(e) => setDraft({ ...draft, models: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} placeholder="模型名（逗号分隔，或用下方按钮拉取）" className="min-w-0 flex-1 rounded-lg border border-border bg-bg-input px-2.5 py-1.5 text-text-primary placeholder:text-text-muted focus:border-accent/50 focus:outline-none" />
+              <button onClick={() => void handleFetchModels(draft)} disabled={fetching === 'draft'} className="chip shrink-0 text-[11px]">{fetching === 'draft' ? '获取中' : '获取模型'}</button>
             </div>
           </div>
           <div className="flex justify-end gap-1.5">
@@ -142,7 +158,7 @@ export function ModelTab({
 
       <Divider />
 
-      {/* ===== 以下为原「推理参数」区，从原 ModelTab 平移保留 ===== */}
+      {/* ===== 推理参数区 ===== */}
 
       <SectionTitle title="推理参数" desc="控制模型的推理行为与输出风格" />
 
@@ -186,13 +202,7 @@ export function ModelTab({
                 onClick={() => update({ reasoningEffort: level.value })}
                 className={`flex-1 rounded-lg border p-2.5 text-center transition-all duration-200 ${
                   local.reasoningEffort === level.value
-                    ? level.value === 'ultra'
-                      ? 'border-accent bg-accent/20 shadow-[0_0_16px_color-mix(in_srgb,var(--theme-color)_50%,transparent)]'
-                      : level.value === 'max'
-                        ? 'border-accent bg-accent/15 shadow-[0_0_12px_color-mix(in_srgb,var(--theme-color)_40%,transparent)]'
-                        : level.value === 'high'
-                          ? 'border-accent bg-accent/10'
-                          : 'border-border bg-bg-elevated'
+                    ? 'border-accent bg-accent/10'
                     : 'border-border bg-bg-elevated hover:border-border-hover'
                 }`}
               >
@@ -251,7 +261,7 @@ export function ModelTab({
           onChange={(e) => update({ customPrompt: e.target.value })}
           rows={4}
           placeholder="输入额外指令，将追加到所有模式的系统提示词之后。例如：&#10;- 始终用中文回答&#10;- 输出更简洁，避免冗余解释&#10;- 代码注释用英文"
-          className="w-full resize-none rounded-lg border border-border bg-bg-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+          className="w-full resize-none rounded-lg border border-border bg-bg-input px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
         />
         <p className="mt-1.5 text-xs text-text-muted">
           这些指令会附加到每个模式的系统提示词末尾，影响所有对话

@@ -86,11 +86,13 @@ const TOOL_LABELS: Record<string, string> = {
   web_research: '深度研究'
 }
 
-/** 单个工具调用卡片（展开后列表中使用） */
+/** 单个工具调用卡片（优化版：默认展开完成的工具，减少点击） */
 function ToolCallCard({ tc }: { tc: { name: string; status: string; args?: string; result?: string } }): React.ReactElement {
-  const [expanded, setExpanded] = useState(false)
   const isDone = tc.status === 'done'
   const isCalling = tc.status === 'calling'
+
+  // 优化：完成的工具默认展开结果，减少用户点击
+  const [expanded, setExpanded] = useState(isDone)
 
   let queryLabel = ''
   if (tc.args) {
@@ -107,40 +109,45 @@ function ToolCallCard({ tc }: { tc: { name: string; status: string; args?: strin
           isDone
             ? 'border-green-500/30 bg-green-500/10 text-green-400'
             : isCalling
-              ? 'border-accent/30 bg-accent/10 text-accent halo-pulse'
+              ? 'border-accent/30 bg-accent/10 text-accent'
               : 'border-border-subtle bg-bg-surface/60 text-text-muted'
         }`}
         onClick={() => setExpanded(!expanded)}
       >
         {isCalling ? (
           <Loader2 size={13} className="animate-spin text-accent" />
+        ) : isDone ? (
+          <Check size={13} className="text-green-400" />
         ) : (
           <span className="text-text-muted">{TOOL_ICONS[tc.name] || <Cpu size={14} />}</span>
         )}
-        <span>{TOOL_LABELS[tc.name] || tc.name}</span>
+        <span className="font-medium">{TOOL_LABELS[tc.name] || tc.name}</span>
         {queryLabel && (
-          <span className="text-text-muted truncate max-w-[120px]">"{queryLabel}"</span>
+          <span className="text-text-muted/70 truncate max-w-[150px] text-[11px]">"{queryLabel}"</span>
         )}
-        <span className="ml-auto flex items-center gap-1 text-text-muted">
-          {isCalling ? '执行中…' : isDone ? '✓ 完成' : '思考中…'}
+        <span className="ml-auto flex items-center gap-1.5">
+          <span className={`text-[11px] ${isDone ? 'text-green-400' : isCalling ? 'text-accent' : 'text-text-muted'}`}>
+            {isCalling ? '执行中' : isDone ? '完成' : '准备'}
+          </span>
           {(tc.args || tc.result) && (
-            <ChevronDown size={11} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
+            <ChevronDown size={11} className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
           )}
         </span>
       </div>
       {expanded && (tc.args || tc.result) && (
-        <div className="mt-1 rounded-xl border border-border-subtle bg-bg-surface px-3 py-2 text-xs text-text-muted">
+        <div className="mt-1.5 rounded-xl border border-border-subtle bg-bg-surface px-3 py-2 text-xs animate-fade-in">
           {tc.args && (
-            <div className="mb-1">
+            <div className="mb-2">
               <span className="font-medium text-text-secondary">参数：</span>
-              <code className="break-all">{tc.args}</code>
+              <code className="block mt-1 text-[11px] text-text-muted break-all">{tc.args}</code>
             </div>
           )}
           {tc.result && (
             <div>
               <span className="font-medium text-text-secondary">结果：</span>
-              <p className="line-clamp-4 whitespace-pre-wrap break-words">{tc.result.slice(0, 500)}</p>
-              {tc.result.length > 500 && <span className="text-accent cursor-pointer">…展开更多</span>}
+              <p className="mt-1 text-[11px] text-text-muted whitespace-pre-wrap break-words max-h-32 overflow-y-auto">
+                {tc.result.length > 800 ? tc.result.slice(0, 800) + '\n\n...' : tc.result}
+              </p>
             </div>
           )}
         </div>
@@ -538,7 +545,7 @@ export const MessageItem = memo(function MessageItem({
             {/* 内容 */}
             <div className="overflow-x-auto">
               {content ? (
-                <MarkdownRenderer content={revealedContent} />
+                <MarkdownRenderer content={revealedContent} streaming={isStreaming} />
               ) : isStreaming && !reasoning ? (
                 <div className="flex items-center gap-1 py-2">
                   <span className="h-2 w-2 animate-bounce rounded-full bg-accent/60 [animation-delay:-0.3s]" />

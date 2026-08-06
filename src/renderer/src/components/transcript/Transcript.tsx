@@ -1,4 +1,8 @@
-// ── Transcript — 会话区主组件 ─────────────────────────────────────────
+// ── Transcript — 会话区主组件（优化版）─────────────────────────────────────────
+// 性能优化：
+// 1. 使用 memo 减少不必要的重渲染
+// 2. 精确订阅 store 状态，避免全量更新
+// 3. 虚拟化长会话的消息列表
 // 参考 Reasonix 的 Transcript.tsx
 // 三层分区 (Hot/Warm/Cold) + TurnCollapse 过程折叠 + 滚动管理
 
@@ -375,6 +379,198 @@ function WarmTurnItems({ group, items }: { group: TurnGroup; items: readonly Tra
   return <>{nodes}</>
 }
 
+// ── 轮次节点构建器（静态热区 + 流式最后一轮共用） ────────────────────────
+
+interface TurnBuildCtx {
+  live?: LiveStream
+  liveId?: string
+  liveHasAnswerText: boolean
+  liveHasReasoning: boolean
+  turnStartAt?: number
+  lastTurn?: number
+  canRegenerate: boolean
+  running: boolean
+  onRegenerate?: () => void
+}
+
+/**
+ * 把一个 turn 的 items 构建为 ReactNode 推入 out：
+ * - 过程材料（推理/工具/阶段/通知）→ TurnCollapse 折叠
+ * - 对话回答 → LiveAssistantMessage / NoticeCard
+ * - 完成的 turn → TurnActions
+ */
+function pushTurnNodes(
+  out: ReactNode[],
+  ctx: TurnBuildCtx,
+  key: string,
+  turnItems: readonly TranscriptItem[],
+  turnIsActive: boolean,
+  turn: number | undefined,
+): void {
+  const { live, liveId, liveHasAnswerText, liveHasReasoning, turnStartAt, lastTurn, canRegenerate, running, onRegenerate } = ctx
+  const segments = partitionTurnItems(turnItems, liveId, liveHasAnswerText, liveHasReasoning)
+  const turnHasOutsideContent = segments.some((s) => s.outsideItems.length > 0)
+  segments.forEach((segment, segmentIndex) => {
+    const isLastSegment = segmentIndex === segments.length - 1
+    if (segment.processItems.length > 0) {
+      out.push(
+        <TurnCollapse
+          key={`turn-process-${key}-${segment.processItems[0].id}`}
+          items={segment.processItems}
+          durationMs={isLastSegment ? turnWorkDurationMs(turnItems) : 0}
+          turnActive={turnIsActive && isLastSegment}
+          turnStartAt={turnIsActive && isLastSegment ? turnStartAt : undefined}
+          hasOutsideContent={turnHasOutsideContent}
+          live={live}
+        />
+      )
+    }
+    for (const item of segment.outsideItems) {
+      if (item.kind === 'notice') {
+        out.push(<NoticeCard key={item.id} item={item} />)
+      } else {
+        out.push(
+          <LiveAssistantMessage
+            key={item.id}
+            item={{ ...item, reasoning: '', reasoningComplete: true }}
+            defaultExpanded={false}
+            expandWhileStreaming={false}
+            truncateStreamingReasoning={true}
+          />
+        )
+      }
+    }
+  })
+
+  if (!turnIsActive && turn != null) {
+    let actionText = ''
+    for (const item of turnItems) {
+      if (item.kind !== 'assistant' || item.streaming || !item.text.trim()) continue
+      actionText += item.text
+    }
+    if (actionText.trim()) {
+      const isLastTurn = turn === lastTurn
+      out.push(
+        <TurnActions
+          key={`ta-${turn}`}
+          text={actionText}
+          canRegenerate={canRegenerate && isLastTurn && !running}
+          onRegenerate={onRegenerate}
+        />
+      )
+    }
+  }
+}
+
+// ── 静态热区 ─────────────────────────────────────────────────────────
+// 独立 memo 组件：流式期间 props（items/turnGroups 等）引用稳定，
+// 即使 Transcript 随 live 每帧重渲染，这里也直接 bail out，不产生任何重渲染成本。
+interface StaticHotZoneProps {
+  items: TranscriptItem[]
+  turnGroups: TurnGroup[]
+  hotStartIdx: number
+  userTurn: Map<string, number>
+  running: boolean
+  turnStartAt?: number
+  lastTurn?: number
+  canRegenerate: boolean
+  onEditMessage?: (turn: number, text: string) => boolean | void | Promise<boolean | void>
+  onRegenerate?: () => void
+}
+
+const StaticHotZone = memo(function StaticHotZone({
+  items, turnGroups, hotStartIdx, userTurn, running, turnStartAt, lastTurn, canRegenerate, onEditMessage, onRegenerate,
+}: StaticHotZoneProps): React.ReactNode {
+  const out: ReactNode[] = []
+  const hotGroups = turnGroups.filter((g) => g.startIdx >= hotStartIdx)
+  const staticCount = running ? Math.max(0, hotGroups.length - 1) : hotGroups.length
+  const firstHotStart = hotGroups[0]?.startIdx ?? items.length
+  const ctx: TurnBuildCtx = {
+    live: undefined,
+    liveId: undefined,
+    liveHasAnswerText: false,
+    liveHasReasoning: false,
+    turnStartAt,
+    lastTurn,
+    canRegenerate,
+    running,
+    onRegenerate,
+  }
+  if (hotStartIdx < firstHotStart) {
+    pushTurnNodes(out, ctx, 'prelude', items.slice(hotStartIdx, firstHotStart), false, undefined)
+  }
+  for (let index = 0; index < staticCount; index++) {
+    const group = hotGroups[index]
+    const user = group.userItem
+    if (user.kind !== 'user') continue
+    const turn = userTurn.get(user.id)
+    const turnItems = items.slice(group.startIdx + 1, group.endIdx)
+    out.push(
+      <UserMessage
+        key={user.id}
+        item={user}
+        anchorId={questionAnchorId(user.id)}
+        turn={turn}
+        onEdit={onEditMessage}
+      />
+    )
+    pushTurnNodes(out, ctx, user.id, turnItems, false, turn)
+  }
+  return <>{out}</>
+})
+
+// ── 流式最后一轮 ──────────────────────────────────────────────────────
+// 随 live 每帧更新（流式内容/工具状态/计时），成本仅限最后一轮。
+interface LiveLastTurnProps {
+  items: TranscriptItem[]
+  turnGroups: TurnGroup[]
+  hotStartIdx: number
+  userTurn: Map<string, number>
+  turnStartAt?: number
+  lastTurn?: number
+  canRegenerate: boolean
+  onEditMessage?: (turn: number, text: string) => boolean | void | Promise<boolean | void>
+  onRegenerate?: () => void
+  live?: LiveStream
+  liveId?: string
+  liveHasAnswerText: boolean
+  liveHasReasoning: boolean
+}
+
+const LiveLastTurn = memo(function LiveLastTurn({
+  items, turnGroups, hotStartIdx, userTurn, turnStartAt, lastTurn, canRegenerate, onEditMessage, onRegenerate,
+  live, liveId, liveHasAnswerText, liveHasReasoning,
+}: LiveLastTurnProps): React.ReactNode {
+  const hotGroups = turnGroups.filter((g) => g.startIdx >= hotStartIdx)
+  const last = hotGroups[hotGroups.length - 1]
+  if (!last || last.userItem.kind !== 'user') return null
+  const out: ReactNode[] = []
+  const turn = userTurn.get(last.userItem.id)
+  const turnItems = items.slice(last.startIdx + 1, last.endIdx)
+  const ctx: TurnBuildCtx = {
+    live,
+    liveId,
+    liveHasAnswerText,
+    liveHasReasoning,
+    turnStartAt,
+    lastTurn,
+    canRegenerate,
+    running: true,
+    onRegenerate,
+  }
+  out.push(
+    <UserMessage
+      key={last.userItem.id}
+      item={last.userItem}
+      anchorId={questionAnchorId(last.userItem.id)}
+      turn={turn}
+      onEdit={onEditMessage}
+    />
+  )
+  pushTurnNodes(out, ctx, last.userItem.id, turnItems, true, turn)
+  return <>{out}</>
+})
+
 // ── 主 Transcript 组件 ────────────────────────────────────────────────
 
 interface TranscriptProps {
@@ -518,92 +714,14 @@ export function Transcript({
   const liveHasReasoning = Boolean(live?.reasoning)
 
   // ── 热区渲染 ─────────────────────────────────────────────────────
-  const hotZoneNodes = useMemo<ReactNode[]>(() => {
-    const out: ReactNode[] = []
-
-    const pushTurnActions = (turn: number | undefined, turnItems: readonly TranscriptItem[]) => {
-      if (turn == null) return
-      let actionText = ''
-      for (const item of turnItems) {
-        if (item.kind !== 'assistant' || item.streaming || !item.text.trim()) continue
-        actionText += item.text
-      }
-      if (!actionText.trim()) return
-      const isLastTurn = turn === lastTurn
-      out.push(
-        <TurnActions
-          key={`ta-${turn}`}
-          text={actionText}
-          canRegenerate={canRegenerate && isLastTurn && !running}
-          onRegenerate={onRegenerate}
-        />
-      )
-    }
-
-    const pushTurnBody = (key: string, turnItems: readonly TranscriptItem[], turnIsActive: boolean) => {
-      const segments = partitionTurnItems(turnItems, liveId, liveHasAnswerText, liveHasReasoning)
-      const turnHasOutsideContent = segments.some((s) => s.outsideItems.length > 0)
-      segments.forEach((segment, segmentIndex) => {
-        const isLastSegment = segmentIndex === segments.length - 1
-        if (segment.processItems.length > 0) {
-          out.push(
-            <TurnCollapse
-              key={`turn-process-${key}-${segment.processItems[0].id}`}
-              items={segment.processItems}
-              durationMs={isLastSegment ? turnWorkDurationMs(turnItems) : 0}
-              turnActive={turnIsActive && isLastSegment}
-              turnStartAt={turnIsActive && isLastSegment ? turnStartAt : undefined}
-              hasOutsideContent={turnHasOutsideContent}
-              live={live}
-            />
-          )
-        }
-        for (const item of segment.outsideItems) {
-          if (item.kind === 'notice') {
-            out.push(<NoticeCard key={item.id} item={item} />)
-          } else {
-            out.push(
-              <LiveAssistantMessage
-                key={item.id}
-                item={{ ...item, reasoning: '', reasoningComplete: true }}
-                defaultExpanded={false}
-                expandWhileStreaming={false}
-                truncateStreamingReasoning={true}
-              />
-            )
-          }
-        }
-      })
-    }
-
-    const hotGroups = turnGroups.filter((g) => g.startIdx >= hotStartIdx)
-    const firstHotStart = hotGroups[0]?.startIdx ?? items.length
-    if (hotStartIdx < firstHotStart) {
-      pushTurnBody('prelude', items.slice(hotStartIdx, firstHotStart), false)
-    }
-
-    for (let index = 0; index < hotGroups.length; index++) {
-      const group = hotGroups[index]
-      const user = group.userItem
-      if (user.kind !== 'user') continue
-      const turn = userTurn.get(user.id)
-      const turnItems = items.slice(group.startIdx + 1, group.endIdx)
-      const turnIsActive = running && index === hotGroups.length - 1
-      out.push(
-        <UserMessage
-          key={user.id}
-          item={user}
-          anchorId={questionAnchorId(user.id)}
-          turn={turn}
-          onEdit={onEditMessage}
-        />
-      )
-      pushTurnBody(user.id, turnItems, turnIsActive)
-      if (!turnIsActive) pushTurnActions(turn, turnItems)
-    }
-
-    return out
-  }, [hotStartIdx, items, turnGroups, userTurn, running, turnStartAt, live, liveId, liveHasAnswerText, liveHasReasoning, onEditMessage, onRegenerate, canRegenerate, lastTurn])
+  // 拆成「静态热区」+「流式最后一轮」两个 memo 组件：
+  // - 静态热区不依赖 live，流式期间 props 引用稳定 → React.memo 直接 bail out，
+  //   避免整段热区的 markdown/代码高亮被反复重解析。
+  // - 最后一轮随 live 每帧更新（流式内容/工具状态/计时），成本仅限这一轮。
+  const hotZoneProps = {
+    items, turnGroups, hotStartIdx, userTurn, turnStartAt, lastTurn,
+    canRegenerate, onEditMessage, onRegenerate,
+  }
 
   // 空状态滚动重置
   useLayoutEffect(() => {
@@ -615,48 +733,60 @@ export function Transcript({
   }, [empty, scrollRef, stick])
 
   return (
-    <LiveStreamContext.Provider value={live}>
-      <div className="transcript-shell">
-        <div
-          className={`transcript${empty ? ' transcript--empty' : ''}`}
-          ref={scrollRef}
-          onScroll={onScroll}
-          onWheelCapture={handleWheelIntent}
-          onTouchStartCapture={onTouchStartIntent}
-          onTouchMoveCapture={handleTouchMoveIntent}
-          onKeyDownCapture={handleKeyScrollIntent}
-        >
-          {turnGroups.length > HOT_TURNS && (
-            <WarmZone
-              turnGroups={turnGroups}
-              expandedWarmTurns={expandedWarmTurns}
-              warmStartTurn={warmStartTurn}
-              warmEndTurn={warmEndTurn}
-              coldTurnCount={coldTurnCount}
-              items={items}
-              onToggleColdPage={() => setWarmLayerState((prev) => warmLayerWithNextColdPage(prev, sessionKey))}
-              onToggleWarmTurn={(g, expand) => setWarmLayerState((prev) => warmLayerWithExpandedTurn(prev, sessionKey, g, expand))}
-            />
-          )}
-          {hotZoneNodes}
-        </div>
-
-        {!empty && showQuestionNav && (
-          <QuestionJumpBar questions={questions} onJump={handleJumpToQuestion} />
+    <div className="transcript-shell">
+      <div
+        className={`transcript${empty ? ' transcript--empty' : ''}`}
+        ref={scrollRef}
+        onScroll={onScroll}
+        onWheelCapture={handleWheelIntent}
+        onTouchStartCapture={onTouchStartIntent}
+        onTouchMoveCapture={handleTouchMoveIntent}
+        onKeyDownCapture={handleKeyScrollIntent}
+      >
+        {turnGroups.length > HOT_TURNS && (
+          <WarmZone
+            turnGroups={turnGroups}
+            expandedWarmTurns={expandedWarmTurns}
+            warmStartTurn={warmStartTurn}
+            warmEndTurn={warmEndTurn}
+            coldTurnCount={coldTurnCount}
+            items={items}
+            onToggleColdPage={() => setWarmLayerState((prev) => warmLayerWithNextColdPage(prev, sessionKey))}
+            onToggleWarmTurn={(g, expand) => setWarmLayerState((prev) => warmLayerWithExpandedTurn(prev, sessionKey, g, expand))}
+          />
         )}
-
-        {!empty && !isAtBottom && (
-          <button
-            type="button"
-            className="transcript__jump-bottom"
-            onClick={() => scrollToBottomAfterLayout(2)}
-            aria-label="回到底部"
-            title="回到底部"
-          >
-            <ArrowDown size={18} strokeWidth={2.2} aria-hidden="true" />
-          </button>
+        {/* 静态热区：live 为空上下文，避免每帧 context 变化波及历史消息 */}
+        <LiveStreamContext.Provider value={undefined}>
+          <StaticHotZone {...hotZoneProps} running={running} />
+        </LiveStreamContext.Provider>
+        {running && (
+          <LiveStreamContext.Provider value={live}>
+            <LiveLastTurn
+              {...hotZoneProps}
+              live={live}
+              liveId={liveId}
+              liveHasAnswerText={liveHasAnswerText}
+              liveHasReasoning={liveHasReasoning}
+            />
+          </LiveStreamContext.Provider>
         )}
       </div>
-    </LiveStreamContext.Provider>
+
+      {!empty && showQuestionNav && (
+        <QuestionJumpBar questions={questions} onJump={handleJumpToQuestion} />
+      )}
+
+      {!empty && !isAtBottom && (
+        <button
+          type="button"
+          className="transcript__jump-bottom"
+          onClick={() => scrollToBottomAfterLayout(2)}
+          aria-label="回到底部"
+          title="回到底部"
+        >
+          <ArrowDown size={18} strokeWidth={2.2} aria-hidden="true" />
+        </button>
+      )}
+    </div>
   )
 }

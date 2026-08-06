@@ -59,7 +59,7 @@ export const AssistantMessage = memo(function AssistantMessage({
       )}
       {hasText && (
         <div className="msg__body">
-          <MarkdownRenderer content={shown.text} />
+          <MarkdownRenderer content={shown.text} streaming={shown.streaming} />
         </div>
       )}
       {shown.streaming && !hasText && !hasReasoning && (

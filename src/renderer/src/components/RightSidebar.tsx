@@ -25,7 +25,11 @@ interface ContextEntry {
   prompt: string
 }
 
-export function RightSidebar(): React.ReactElement {
+interface RightSidebarProps {
+  onToggleCollapse?: () => void
+}
+
+export function RightSidebar({ onToggleCollapse: _onToggleCollapse }: RightSidebarProps): React.ReactElement {
   const currentMode = useStore((s) => s.currentMode)
   const conversations = useStore((s) => s.conversations)
   const currentConversationId = useStore((s) => s.currentConversationId)
@@ -49,10 +53,8 @@ function ContextRightPanel({ hasConversation: _hasConversation }: { hasConversat
   const [recordingStepCount, setRecordingStepCount] = useState(0)
   const [activeTab, setActiveTab] = useState<'skill' | 'mcp'>('skill')
 
-  // 浏览器打开时全屏显示嵌入浏览器
   const browserOpen = useStore((s) => s.browserOpen)
 
-  // 轮询录制状态
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -66,7 +68,6 @@ function ContextRightPanel({ hasConversation: _hasConversation }: { hasConversat
     return () => clearInterval(interval)
   }, [])
 
-  // 如果浏览器打开，全屏显示嵌入浏览器（宽度可拖拽）
   if (browserOpen) {
     return (
       <BrowserPanelContainer />
@@ -74,10 +75,10 @@ function ContextRightPanel({ hasConversation: _hasConversation }: { hasConversat
   }
 
   return (
-    <aside className="flex h-full w-full flex-col border-l border-border-subtle glass">
-      {/* 录制状态指示（Agent 录制模式） */}
+    <aside className="flex h-full w-full flex-col border-l border-border-subtle bg-bg-surface/80 backdrop-blur-md select-none">
+      {/* 录制状态指示 */}
       {isRecording && (
-        <div className="mx-3 mt-3 mb-1 rounded-xl bg-red-500/10 border border-red-500/20 p-2.5 animate-pulse-subtle">
+        <div className="mx-3 mt-3 mb-1 rounded-xl bg-red-500/10 border border-red-500/20 p-2.5">
           <div className="flex items-center gap-2">
             <div className="relative flex h-3 w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
@@ -96,12 +97,14 @@ function ContextRightPanel({ hasConversation: _hasConversation }: { hasConversat
         </div>
       )}
 
-      {/* 标签页切换栏 */}
-      <div className="flex items-center gap-0.5 border-b border-border-subtle px-2 py-1.5 shrink-0">
+      {/* Google Material 风格页签切换栏 */}
+      <div className="flex items-center border-b border-border-subtle shrink-0 px-2">
         <button
           onClick={() => setActiveTab('skill')}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
-            activeTab === 'skill' ? 'bg-accent/15 text-accent' : 'text-text-muted hover:text-text-secondary hover:bg-bg-elevated/50'
+          className={`flex flex-1 items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
+            activeTab === 'skill'
+              ? 'border-accent text-accent'
+              : 'border-transparent text-text-muted hover:text-text-primary'
           }`}
         >
           <FileText size={13} />
@@ -109,8 +112,10 @@ function ContextRightPanel({ hasConversation: _hasConversation }: { hasConversat
         </button>
         <button
           onClick={() => setActiveTab('mcp')}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
-            activeTab === 'mcp' ? 'bg-accent/15 text-accent' : 'text-text-muted hover:text-text-secondary hover:bg-bg-elevated/50'
+          className={`flex flex-1 items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
+            activeTab === 'mcp'
+              ? 'border-accent text-accent'
+              : 'border-transparent text-text-muted hover:text-text-primary'
           }`}
         >
           <Server size={13} />
@@ -216,7 +221,7 @@ function CodingEntriesPanel(): React.ReactElement {
   const sendMessage = useStore((s) => s.sendMessage)
 
   return (
-    <aside className="flex h-full w-full flex-col border-l border-border-subtle glass">
+    <aside className="flex h-full w-full flex-col border-l border-border-subtle bg-bg-surface">
       <div className="px-4 pt-5 pb-3">
         <h3 className="text-sm font-semibold tracking-tight text-text-primary">编码工具</h3>
         <p className="mt-1 text-xs text-text-muted">快速执行编码操作</p>
@@ -231,7 +236,7 @@ function CodingEntriesPanel(): React.ReactElement {
               className="ios-card group flex w-full items-center gap-3 p-3 text-left animate-slide-up"
               style={{ animationDelay: `${idx * 50}ms`, animationFillMode: 'backwards' }}
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent transition-all duration-300 group-hover:bg-accent/20 group-hover:shadow-glow group-hover:scale-105">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent transition-all duration-300 group-hover:bg-accent/20 group-hover:scale-105">
                 <IconCmp size={18} />
               </div>
               <div className="min-w-0">
@@ -346,7 +351,7 @@ function ProjectFileTreePanel({ projectPath }: { projectPath: string }): React.R
           onSaved={fetchTree}
         />
       ) : (
-        <aside className="flex h-full w-full flex-col border-l border-border-subtle glass">
+        <aside className="flex h-full w-full flex-col border-l border-border-subtle bg-bg-surface">
           {/* 头部 — 项目名 + 刷新 */}
           <div className="flex items-center justify-between px-3 pt-4 pb-2 border-b border-border-subtle shrink-0">
             <div className="flex min-w-0 items-center gap-2">
@@ -513,27 +518,29 @@ function DesignRightPanel({ hasConversation: _hasConversation }: { hasConversati
   const [rightView, setRightView] = useState<'canvas' | 'templates'>('canvas')
 
   return (
-    <aside className="flex h-full w-full flex-col border-l border-border-subtle glass">
-      {/* 视图切换栏 */}
-      <div className="flex items-center gap-0.5 border-b border-border-subtle px-2 py-1.5 shrink-0">
-        <button
-          onClick={() => setRightView('canvas')}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
-            rightView === 'canvas' ? 'bg-accent/15 text-accent' : 'text-text-muted hover:text-text-secondary hover:bg-bg-elevated/50'
-          }`}
-        >
-          <Eye size={13} />
-          画布
-        </button>
-        <button
-          onClick={() => setRightView('templates')}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
-            rightView === 'templates' ? 'bg-accent/15 text-accent' : 'text-text-muted hover:text-text-secondary hover:bg-bg-elevated/50'
-          }`}
-        >
-          <LayoutGrid size={13} />
-          组件
-        </button>
+    <aside className="flex h-full w-full flex-col border-l border-border-subtle">
+      {/* 视图切换栏 — 分段控件 */}
+      <div className="shrink-0 border-b border-border-subtle px-2 py-1.5">
+        <div className="flex rounded-lg bg-bg-elevated/50 p-0.5">
+          <button
+            onClick={() => setRightView('canvas')}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1 text-[11px] font-medium transition-all duration-200 ${
+              rightView === 'canvas' ? 'bg-bg-surface text-accent shadow-sm' : 'text-text-muted hover:text-text-secondary'
+            }`}
+          >
+            <Eye size={12} />
+            画布
+          </button>
+          <button
+            onClick={() => setRightView('templates')}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1 text-[11px] font-medium transition-all duration-200 ${
+              rightView === 'templates' ? 'bg-bg-surface text-accent shadow-sm' : 'text-text-muted hover:text-text-secondary'
+            }`}
+          >
+            <LayoutGrid size={12} />
+            组件
+          </button>
+        </div>
       </div>
 
       {/* 组件视图 */}

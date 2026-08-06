@@ -5,6 +5,8 @@ import { Check, Copy } from 'lucide-react'
 interface CodeBlockProps {
   language: string
   value: string
+  /** 流式期间跳过语法高亮（不完整代码高亮是重复浪费），结束后再高亮一次 */
+  streaming?: boolean
 }
 
 // react-syntax-highlighter 延迟加载 — 首次渲染代码块时才动态导入
@@ -24,7 +26,7 @@ function loadHighlighter(): Promise<{ Component: React.FC<Record<string, unknown
   return highlighterPromise
 }
 
-export const CodeBlock = memo(function CodeBlock({ language, value }: CodeBlockProps): React.ReactElement {
+export const CodeBlock = memo(function CodeBlock({ language, value, streaming = false }: CodeBlockProps): React.ReactElement {
   const [copied, setCopied] = useState(false)
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [highlighter, setHighlighter] = useState<{ Component: React.FC<Record<string, unknown>>; style: SyntaxHighlighterStyle } | null>(null)
@@ -66,7 +68,7 @@ export const CodeBlock = memo(function CodeBlock({ language, value }: CodeBlockP
           {copied ? '已复制' : '复制'}
         </button>
       </div>
-      {highlighter ? (
+      {!streaming && highlighter ? (
         <highlighter.Component
           language={language || 'text'}
           style={highlighter.style}

@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Minus, X, Briefcase, Code2, PenTool } from 'lucide-react'
+import { Minus, X, Briefcase, Code2, PenTool, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import type { Mode } from '../../../shared/types'
 
-// 自定义 Windows 窗口控制图标（还原按钮：两个重叠方框）
-function RestoreIcon({ size = 16 }: { size?: number }): React.ReactElement {
+function RestoreIcon({ size = 15 }: { size?: number }): React.ReactElement {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2">
       <rect x="3" y="5" width="8" height="8" rx="1" />
@@ -13,8 +12,7 @@ function RestoreIcon({ size = 16 }: { size?: number }): React.ReactElement {
   )
 }
 
-// 最大化图标（实心方框）
-function MaximizeIcon({ size = 16 }: { size?: number }): React.ReactElement {
+function MaximizeIcon({ size = 15 }: { size?: number }): React.ReactElement {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2">
       <rect x="3" y="3" width="10" height="10" rx="1.5" />
@@ -24,11 +22,23 @@ function MaximizeIcon({ size = 16 }: { size?: number }): React.ReactElement {
 
 const TAB_ITEMS: { id: Mode; label: string; icon: typeof Briefcase }[] = [
   { id: 'office', label: 'Work', icon: Briefcase },
-  { id: 'coding', label: '+Code', icon: Code2 },
+  { id: 'coding', label: 'Code', icon: Code2 },
   { id: 'design', label: 'Design', icon: PenTool }
 ]
 
-export function TitleBar(): React.ReactElement {
+interface TitleBarProps {
+  leftCollapsed?: boolean
+  rightCollapsed?: boolean
+  onToggleLeft?: () => void
+  onToggleRight?: () => void
+}
+
+export function TitleBar({
+  leftCollapsed = false,
+  rightCollapsed = false,
+  onToggleLeft,
+  onToggleRight
+}: TitleBarProps): React.ReactElement {
   const currentMode = useStore((s) => s.currentMode)
   const setMode = useStore((s) => s.setMode)
   const conversations = useStore((s) => s.conversations)
@@ -43,13 +53,24 @@ export function TitleBar(): React.ReactElement {
   }, [])
 
   const currentConv = conversations.find((c) => c.id === currentConversationId)
-  const statusText = currentConv ? currentConv.title : 'CodeMax 任务状态'
+  const statusText = currentConv ? currentConv.title : 'CodeMax Workspace'
 
   return (
-    <div className="drag-region relative z-20 flex h-[52px] flex-shrink-0 items-center justify-between border-b border-border-subtle glass pr-0">
-      {/* 左侧：iOS 分段控件模式切换 */}
-      <div className="no-drag flex items-center pl-3">
-        <div className="flex items-center gap-0.5 rounded-full border border-border-subtle bg-bg-elevated/70 p-1 shadow-inner">
+    <div className="drag-region relative z-20 flex h-[42px] flex-shrink-0 items-center justify-between border-b border-border-subtle bg-bg-surface px-3 select-none">
+      {/* 左侧：折叠按钮 + Google Material Tabs */}
+      <div className="no-drag flex items-center gap-3">
+        {onToggleLeft && (
+          <button
+            onClick={onToggleLeft}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary active:scale-[0.96]"
+            title={leftCollapsed ? '展开左侧边栏' : '折叠左侧边栏'}
+          >
+            {leftCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
+        )}
+
+        {/* Google Material Tabs (平整底线高亮，无大圆角) */}
+        <div className="flex items-center gap-1 h-full">
           {TAB_ITEMS.map((tab) => {
             const IconCmp = tab.icon
             const isActive = currentMode === tab.id
@@ -57,13 +78,13 @@ export function TitleBar(): React.ReactElement {
               <button
                 key={tab.id}
                 onClick={() => setMode(tab.id)}
-                className={`relative flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[13px] font-semibold transition-all duration-300 ease-out-quart ${
+                className={`relative flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium transition-colors duration-150 border-b-2 ${
                   isActive
-                    ? 'bg-accent text-white shadow-glow'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                    ? 'border-accent text-accent'
+                    : 'border-transparent text-text-secondary hover:text-text-primary hover:bg-bg-hover/50 rounded-t-md'
                 }`}
               >
-                <IconCmp size={14} className={isActive ? 'drop-shadow' : ''} />
+                <IconCmp size={14} />
                 <span>{tab.label}</span>
               </button>
             )
@@ -71,42 +92,59 @@ export function TitleBar(): React.ReactElement {
         </div>
       </div>
 
-      {/* 中间：当前任务状态（生成中显示脉冲微光） */}
+      {/* 中间：任务标题状态 */}
       <div className="flex flex-1 items-center justify-center gap-2 overflow-hidden px-4">
-        {isStreaming && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent animate-pulse-dot shadow-glow" />}
+        {isStreaming ? (
+          <span className="h-2 w-2 shrink-0 rounded-full bg-accent animate-ping" />
+        ) : (
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+        )}
         <span
-          className={`truncate text-xs transition-colors ${
-            isStreaming ? 'text-shine font-medium' : 'text-text-muted'
+          className={`truncate font-mono text-[12px] transition-colors ${
+            isStreaming ? 'font-medium text-accent' : 'text-text-muted'
           }`}
         >
           {statusText}
         </span>
       </div>
 
-      {/* 右侧：窗口控制按钮 */}
-      <div className="no-drag flex h-full">
-        <button
-          onClick={() => void window.api.window.minimize()}
-          className="flex h-full w-11 items-center justify-center text-text-secondary transition-all duration-200 hover:bg-bg-hover hover:text-text-primary active:scale-90"
-          title="最小化"
-        >
-          <Minus size={15} />
-        </button>
-        <button
-          onClick={() => void window.api.window.maximize()}
-          className="flex h-full w-11 items-center justify-center text-text-secondary transition-all duration-200 hover:bg-bg-hover hover:text-text-primary active:scale-90"
-          title={isMaximized ? '还原' : '最大化'}
-        >
-          {isMaximized ? <RestoreIcon size={14} /> : <MaximizeIcon size={14} />}
-        </button>
-        <button
-          onClick={() => void window.api.window.close()}
-          className="flex h-full w-11 items-center justify-center text-text-secondary transition-all duration-200 hover:bg-gradient-to-br hover:from-red-500 hover:to-red-600 hover:text-white hover:shadow-[0_0_20px_rgba(239,68,68,0.35)] active:scale-90"
-          title="关闭"
-        >
-          <X size={15} />
-        </button>
+      {/* 右侧：右侧栏折叠按钮 + 窗口控制 */}
+      <div className="no-drag flex items-center gap-1">
+        {onToggleRight && (
+          <button
+            onClick={onToggleRight}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary active:scale-[0.96]"
+            title={rightCollapsed ? '展开右侧面板' : '折叠右侧面板'}
+          >
+            {rightCollapsed ? <PanelRightOpen size={16} /> : <PanelRightClose size={16} />}
+          </button>
+        )}
+
+        <div className="ml-1 flex h-full items-center">
+          <button
+            onClick={() => void window.api.window.minimize()}
+            className="flex h-7 w-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary active:scale-[0.95]"
+            title="最小化"
+          >
+            <Minus size={14} />
+          </button>
+          <button
+            onClick={() => void window.api.window.maximize()}
+            className="flex h-7 w-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary active:scale-[0.95]"
+            title={isMaximized ? '还原' : '最大化'}
+          >
+            {isMaximized ? <RestoreIcon size={14} /> : <MaximizeIcon size={14} />}
+          </button>
+          <button
+            onClick={() => void window.api.window.close()}
+            className="flex h-7 w-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-rose-600 hover:text-white active:scale-[0.95]"
+            title="关闭"
+          >
+            <X size={14} />
+          </button>
+        </div>
       </div>
     </div>
   )
 }
+

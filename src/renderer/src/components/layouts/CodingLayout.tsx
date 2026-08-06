@@ -80,14 +80,18 @@ export function CodingLayout(): React.ReactElement {
   const totalDeletions = changeRows.reduce((sum, r) => sum + r.deletions, 0)
 
   // ── 适配：把 ChatMessage[] 转成扁平 TranscriptItem[] ──────────────────
+  // streamingToolCalls 每帧都被 runStream 重建（即使内容未变），
+  // 这里按内容做稳定性处理，避免纯文本流式期间 items 全量重建。
+  const streamingToolCallsKey = useMemo(() => JSON.stringify(streamingToolCalls), [streamingToolCalls])
+  const stableStreamingToolCalls = useMemo(() => streamingToolCalls, [streamingToolCallsKey])
   const items = useMemo(() => {
     if (!conversation) return []
     return adaptMessages(
       conversation.messages,
-      isStreamingThis ? streamingToolCalls : undefined,
+      isStreamingThis ? stableStreamingToolCalls : undefined,
       isStreamingThis ? streamingAssistantId : undefined,
     )
-  }, [conversation, isStreamingThis, streamingToolCalls, streamingAssistantId])
+  }, [conversation, isStreamingThis, stableStreamingToolCalls, streamingAssistantId])
 
   // ── 流式 LiveStream ──────────────────────────────────────────────────
   const live = useMemo(() => {
@@ -141,7 +145,7 @@ export function CodingLayout(): React.ReactElement {
   return (
     <div className={`flex min-h-0 flex-1 flex-col chat-fs-${fontSize}`}>
       {/* 头部 — 任务执行详情 */}
-      <div className="flex items-center justify-between border-b border-border-subtle glass px-4 py-2 shrink-0">
+      <div className="flex items-center justify-between border-b border-border-subtle bg-bg-surface px-4 py-2 shrink-0">
         <div className="flex items-center gap-2">
           <FileCode2 size={14} className="text-accent" />
           <span className="text-sm font-medium text-text-primary">CodeMax Code</span>
@@ -248,7 +252,7 @@ function ChangeSummarySection({
       </button>
       {expanded && (
         <div className="mt-2">
-          <div className="overflow-hidden rounded-xl border border-border-subtle shadow-glass">
+          <div className="overflow-hidden rounded-xl border border-border-subtle">
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-bg-elevated">
@@ -351,7 +355,7 @@ function CodingActionBar({
   }
 
   return (
-    <div className="border-t border-border-subtle glass px-4 py-2">
+    <div className="border-t border-border-subtle bg-bg-surface px-4 py-2">
       <div className="flex items-center justify-center gap-2">
         <button
           onClick={handleUndo}

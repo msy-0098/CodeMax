@@ -2,9 +2,14 @@ import { memo, useState, useMemo } from 'react'
 import { Plus, Users, Brain, RefreshCw, MoreHorizontal, Trash2, Pencil, Settings, BarChart3, ChevronRight, ChevronDown, Folder, X } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { MODE_CONFIGS } from '../modes'
-import type { Conversation, Mode } from '../../../shared/types'
+import { estimateContextTokens } from '../../../shared/context-compress'
+import type { Conversation } from '../../../shared/types'
 
-export function Sidebar(): React.ReactElement {
+interface SidebarProps {
+  onToggleCollapse?: () => void
+}
+
+export function Sidebar({ onToggleCollapse: _onToggleCollapse }: SidebarProps): React.ReactElement {
   const allConversations = useStore((s) => s.conversations)
   const currentConversationId = useStore((s) => s.currentConversationId)
   const currentMode = useStore((s) => s.currentMode)
@@ -22,10 +27,8 @@ export function Sidebar(): React.ReactElement {
   const newConversationForProject = useStore((s) => s.newConversationForProject)
   const removeProject = useStore((s) => s.removeProject)
 
-  // 按当前模式过滤会话列表
   const conversations = allConversations.filter((c) => c.mode === currentMode)
   const modeConfig = MODE_CONFIGS[currentMode]
-
   const isProjectMode = currentMode === 'coding' || currentMode === 'design'
 
   const handleNew = (): void => {
@@ -50,7 +53,6 @@ export function Sidebar(): React.ReactElement {
     useStore.getState().setShowMemoryPanel(true)
   }
 
-  // coding/design 模式：按 projectPath 分组
   const projectGroups = useMemo(() => {
     if (!isProjectMode) return []
     const groups: Record<string, Conversation[]> = {}
@@ -59,11 +61,9 @@ export function Sidebar(): React.ReactElement {
       if (!groups[path]) groups[path] = []
       groups[path].push(conv)
     }
-    // 每组内按 updatedAt 降序
     for (const path of Object.keys(groups)) {
       groups[path].sort((a, b) => b.updatedAt - a.updatedAt)
     }
-    // 项目按组内最新会话时间降序
     return Object.entries(groups).sort(([, a], [, b]) => {
       const aLatest = a[0]?.updatedAt ?? 0
       const bLatest = b[0]?.updatedAt ?? 0
@@ -72,19 +72,19 @@ export function Sidebar(): React.ReactElement {
   }, [conversations, isProjectMode])
 
   return (
-    <aside className="flex h-full w-full flex-col border-r border-border-subtle glass">
-      {/* 顶部三按钮 */}
-      <div className="flex items-center gap-1.5 px-3 pt-3.5 pb-2">
+    <aside className="flex h-full w-full flex-col border-r border-border-subtle bg-bg-surface select-none">
+      {/* 谷歌标准按钮区 */}
+      <div className="flex items-center gap-1.5 px-3 pt-3 pb-2">
         <button
           onClick={handleNew}
-          className="btn-liquid flex flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-xs font-semibold"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-accent text-white dark:text-[#121212] px-3 py-2 text-xs font-medium shadow-sm transition-all hover:brightness-105 active:scale-[0.98]"
         >
-          <Plus size={14} strokeWidth={2.5} />
-          {isProjectMode ? '打开项目' : '新建任务'}
+          <Plus size={14} strokeWidth={2.2} />
+          <span>{isProjectMode ? '打开项目' : '新建任务'}</span>
         </button>
         <button
           onClick={handleAgentPanel}
-          className="btn-ghost flex items-center justify-center rounded-xl px-2 py-2 text-xs"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-subtle bg-bg-surface text-text-secondary transition-colors hover:border-accent/40 hover:text-accent active:scale-[0.96]"
           title="AI 专家库"
         >
           <Users size={14} />
@@ -92,7 +92,7 @@ export function Sidebar(): React.ReactElement {
         {memoryEnabled && (
           <button
             onClick={handleMemory}
-            className="btn-ghost flex items-center justify-center rounded-xl px-2 py-2 text-xs"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-subtle bg-bg-surface text-text-secondary transition-colors hover:border-accent/40 hover:text-accent active:scale-[0.96]"
             title="记忆"
           >
             <Brain size={14} />
@@ -100,8 +100,8 @@ export function Sidebar(): React.ReactElement {
         )}
       </div>
 
-      {/* 列表标题 */}
-      <div className="flex items-center justify-between px-3.5 pt-3 pb-1.5">
+      {/* 标题 */}
+      <div className="flex items-center justify-between px-3.5 pt-2 pb-1.5">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
           {modeConfig.name} · {isProjectMode ? '项目' : '任务'}
         </span>
@@ -128,7 +128,6 @@ export function Sidebar(): React.ReactElement {
       {/* 列表内容 */}
       <div className="flex-1 overflow-y-auto px-2 pb-2">
         {isProjectMode ? (
-          /* 项目分组列表 */
           <>
             {projectGroups.map(([projectPath, convs]) => {
               const isCollapsed = collapsedProjects[projectPath] ?? false
@@ -153,9 +152,9 @@ export function Sidebar(): React.ReactElement {
               )
             })}
             {projectGroups.length === 0 && (
-              <div className="mt-8 flex flex-col items-center gap-3 px-4 text-center animate-fade-scale">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/10 text-accent shadow-glow edge-light">
-                  <Folder size={20} strokeWidth={2.5} />
+              <div className="mt-8 flex flex-col items-center gap-3 px-4 text-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border-subtle bg-bg-surface text-accent">
+                  <Folder size={18} />
                 </div>
                 <div>
                   <p className="text-xs font-medium text-text-secondary">还没有项目</p>
@@ -165,29 +164,23 @@ export function Sidebar(): React.ReactElement {
             )}
           </>
         ) : (
-          /* office 模式：扁平列表 */
           <>
-            {conversations.map((conv, idx) => (
-              <div
+            {conversations.map((conv) => (
+              <ConversationItem
                 key={conv.id}
-                className="animate-slide-up"
-                style={{ animationDelay: `${Math.min(idx * 30, 240)}ms`, animationFillMode: 'backwards' }}
-              >
-                <ConversationItem
-                  conv={conv}
-                  activeId={currentConversationId}
-                  onSelect={selectConversation}
-                  onDelete={deleteConversation}
-                  onRename={renameConversation}
-                  contextMenuId={contextMenuId}
-                  onContextMenu={setContextMenuId}
-                />
-              </div>
+                conv={conv}
+                activeId={currentConversationId}
+                onSelect={selectConversation}
+                onDelete={deleteConversation}
+                onRename={renameConversation}
+                contextMenuId={contextMenuId}
+                onContextMenu={setContextMenuId}
+              />
             ))}
             {conversations.length === 0 && (
-              <div className="mt-8 flex flex-col items-center gap-3 px-4 text-center animate-fade-scale">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/10 text-accent shadow-glow edge-light">
-                  <Plus size={20} strokeWidth={2.5} />
+              <div className="mt-8 flex flex-col items-center gap-3 px-4 text-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border-subtle bg-bg-surface text-accent">
+                  <Plus size={18} />
                 </div>
                 <div>
                   <p className="text-xs font-medium text-text-secondary">还没有任务</p>
@@ -199,32 +192,31 @@ export function Sidebar(): React.ReactElement {
         )}
       </div>
 
-      {/* 底部：Token 统计 + 设置按钮 */}
-      <div className="flex-shrink-0 border-t border-border-subtle px-3 py-2.5 space-y-1.5">
+      {/* 底部：Google 简约工具栏 */}
+      <div className="flex-shrink-0 border-t border-border-subtle p-2 space-y-1">
         <button
           onClick={() => setShowTokenStats(true)}
-          className="ios-card flex w-full items-center gap-2.5 px-3 py-2 text-xs font-medium text-text-secondary hover:text-text-primary active:scale-[0.98]"
+          className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[12px] font-medium text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary active:scale-[0.98]"
         >
-          <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-accent/10 text-accent">
-            <BarChart3 size={13} />
+          <span className="flex h-5 w-5 items-center justify-center text-text-secondary">
+            <BarChart3 size={14} />
           </span>
-          Token 统计
+          <span className="truncate">Token 统计</span>
         </button>
         <button
           onClick={() => setShowSettings(true)}
-          className="ios-card flex w-full items-center gap-2.5 px-3 py-2 text-xs font-medium text-text-secondary hover:text-text-primary active:scale-[0.98]"
+          className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[12px] font-medium text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary active:scale-[0.98]"
         >
-          <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-accent/10 text-accent">
-            <Settings size={13} />
+          <span className="flex h-5 w-5 items-center justify-center text-text-secondary">
+            <Settings size={14} />
           </span>
-          设置
+          <span className="truncate">系统设置</span>
         </button>
       </div>
     </aside>
   )
 }
 
-// 项目分组组件
 const ProjectGroup = memo(function ProjectGroup({
   projectPath,
   folderName,
@@ -256,8 +248,7 @@ const ProjectGroup = memo(function ProjectGroup({
 }): React.ReactElement {
   return (
     <div className="mb-1">
-      {/* 项目头部 */}
-      <div className="group flex items-center gap-1 rounded-lg px-2 py-1.5 hover:bg-bg-hover transition-colors">
+      <div className="group flex items-center gap-1 rounded-md px-2 py-1.5 hover:bg-bg-hover transition-colors">
         <button
           onClick={() => onToggle(projectPath)}
           className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
@@ -288,9 +279,8 @@ const ProjectGroup = memo(function ProjectGroup({
           <X size={12} />
         </button>
       </div>
-      {/* 会话列表 */}
       {!isCollapsed && (
-        <div className="ml-[18px] border-l border-border-subtle">
+        <div className="ml-[16px] border-l border-border-subtle pl-1">
           {conversations.map((conv) => (
             <ConversationItem
               key={conv.id}
@@ -309,7 +299,6 @@ const ProjectGroup = memo(function ProjectGroup({
   )
 })
 
-// 对话列表项
 const ConversationItem = memo(function ConversationItem({
   conv,
   activeId,
@@ -319,7 +308,14 @@ const ConversationItem = memo(function ConversationItem({
   contextMenuId,
   onContextMenu
 }: {
-  conv: { id: string; title: string; mode: string; projectPath?: string; contextTokens?: number }
+  conv: {
+    id: string
+    title: string
+    mode: string
+    projectPath?: string
+    contextTokens?: number
+    messages?: { content?: string; reasoningContent?: string; toolResults?: { content?: string }[] }[]
+  }
   activeId: string | null
   onSelect: (id: string) => void
   onDelete: (id: string) => void
@@ -329,14 +325,14 @@ const ConversationItem = memo(function ConversationItem({
 }): React.ReactElement {
   const isActive = conv.id === activeId
 
-  // 上下文窗口占用指示器
-  const CONTEXT_WINDOW = 1_000_000
-  const ctxTokens = conv.contextTokens ?? 0
+  const settings = useStore((s) => s.settings)
+  const CONTEXT_WINDOW = settings?.maxContextChars ? Math.floor(settings.maxContextChars / 4) : 75_000
+  const ctxTokens = estimateContextTokens(conv.messages ?? [])
   const ctxPct = ctxTokens > 0 ? (ctxTokens / CONTEXT_WINDOW) * 100 : 0
   const ctxColor = ctxPct >= 80 ? '#ef4444'
     : ctxPct >= 60 ? '#f97316'
     : ctxPct >= 30 ? '#f59e0b'
-    : '#22c55e'
+    : '#1a73e8'
 
   return (
     <div className="relative">
@@ -346,29 +342,25 @@ const ConversationItem = memo(function ConversationItem({
           e.preventDefault()
           onContextMenu(contextMenuId === conv.id ? null : conv.id)
         }}
-        className={`group flex w-full items-center gap-2 rounded-xl py-2 text-left text-sm transition-all duration-200 ease-out-quart ${
+        className={`group flex w-full items-center gap-2 rounded-lg py-1.5 px-2.5 text-left text-[13px] transition-colors ${
           isActive
-            ? 'bg-accent/10 text-accent shadow-[inset_0_1px_0_var(--glass-highlight)] border border-accent/25'
-            : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary border border-transparent'
+            ? 'bg-accent/10 text-accent font-medium'
+            : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
         }`}
-        style={{ paddingLeft: '12px', paddingRight: '8px' }}
       >
-        <span className={`h-2 w-2 shrink-0 rounded-full transition-shadow ${
-          conv.mode === 'office' ? 'bg-blue-400' :
-          conv.mode === 'coding' ? 'bg-emerald-400' : 'bg-purple-400'
-        } ${isActive ? 'shadow-glow animate-pulse-dot' : ''}`} />
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+          isActive ? 'bg-accent' : 'bg-text-muted/40'
+        }`} />
         <span className="truncate flex-1">{conv.title}</span>
-        {ctxTokens > 0 && (
+        <span
+          className="shrink-0 h-1 w-6 rounded-full bg-border-subtle overflow-hidden inline-flex"
+          title={`上下文占用约 ${ctxPct.toFixed(1)}% (${ctxTokens.toLocaleString()} / ${CONTEXT_WINDOW.toLocaleString()} tokens)`}
+        >
           <span
-            className="shrink-0 h-1 w-8 rounded-full bg-border overflow-hidden inline-flex"
-            title={`上下文占用 ${ctxPct.toFixed(1)}% (${ctxTokens.toLocaleString()} / ${CONTEXT_WINDOW.toLocaleString()})`}
-          >
-            <span
-              className="h-full rounded-full transition-all duration-300"
-              style={{ width: `${Math.min(ctxPct, 100)}%`, backgroundColor: ctxColor }}
-            />
-          </span>
-        )}
+            className="h-full rounded-full transition-all duration-200"
+            style={{ width: `${ctxTokens > 0 ? Math.max(15, Math.min(ctxPct, 100)) : 0}%`, backgroundColor: ctxColor }}
+          />
+        </span>
         <button
           onClick={(e) => {
             e.stopPropagation()
@@ -379,10 +371,9 @@ const ConversationItem = memo(function ConversationItem({
           <MoreHorizontal size={12} />
         </button>
       </button>
-      {/* 右键菜单 */}
       {contextMenuId === conv.id && (
         <div
-          className="glass-strong absolute left-0 top-full z-50 mt-1 w-full rounded-xl border border-border py-1 shadow-glass animate-scale-in"
+          className="absolute left-0 top-full z-50 mt-1 w-full rounded-lg border border-border-subtle bg-bg-surface py-1 shadow-md"
           onClick={(e) => e.stopPropagation()}
         >
           <button
@@ -393,7 +384,7 @@ const ConversationItem = memo(function ConversationItem({
               }
               onContextMenu(null)
             }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors"
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors"
           >
             <Pencil size={11} /> 重命名
           </button>
@@ -402,7 +393,7 @@ const ConversationItem = memo(function ConversationItem({
               onDelete(conv.id)
               onContextMenu(null)
             }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors"
+            className="flex w-full items-center gap-2 px-3 py-2 text-xs text-rose-500 hover:bg-rose-500/10 transition-colors"
           >
             <Trash2 size={11} /> 删除
           </button>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseStreamChunk, shouldRetryWithoutStreamOptions } from '../../src/main/llm/stream-parse'
+import { parseStreamChunk, shouldRetryWithoutStreamOptions, shouldRetryWithMinimalBody } from '../../src/main/llm/stream-parse'
 
 describe('parseStreamChunk 容错解析', () => {
   it('标准 OpenAI delta.content', () => {
@@ -54,5 +54,18 @@ describe('shouldRetryWithoutStreamOptions', () => {
   it('非 400 或无关错误 → false', () => {
     expect(shouldRetryWithoutStreamOptions(500, 'stream_options')).toBe(false)
     expect(shouldRetryWithoutStreamOptions(400, 'rate limit exceeded')).toBe(false)
+  })
+})
+
+describe('shouldRetryWithMinimalBody', () => {
+  it('400 + 网关拒绝可选参数关键字 → true', () => {
+    expect(shouldRetryWithMinimalBody(400, "Unsupported parameter: 'stream_options'")).toBe(true)
+    expect(shouldRetryWithMinimalBody(400, 'The parameter max_tokens is not supported')).toBe(true)
+    expect(shouldRetryWithMinimalBody(400, 'Unknown field: tools')).toBe(true)
+  })
+  it('非 400 或与参数无关的错误 → false', () => {
+    expect(shouldRetryWithMinimalBody(500, 'unsupported parameter')).toBe(false)
+    expect(shouldRetryWithMinimalBody(400, 'The model does not exist')).toBe(false)
+    expect(shouldRetryWithMinimalBody(400, 'rate limit exceeded')).toBe(false)
   })
 })

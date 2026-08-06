@@ -137,57 +137,6 @@ export function CollapsibleSection({
   )
 }
 
-export function ModelCard({
-  active,
-  onClick,
-  icon,
-  title,
-  subtitle,
-  specs,
-  desc
-}: {
-  active: boolean
-  onClick: () => void
-  icon: React.ReactNode
-  title: string
-  subtitle: string
-  specs: string[]
-  desc: string
-}): React.ReactElement {
-  return (
-    <button
-      onClick={onClick}
-      className={`ios-card p-4 text-left transition-all ${
-        active
-          ? 'border-accent shadow-glow'
-          : 'hover:border-border-hover'
-      }`}
-    >
-      <div className="mb-2 flex items-center justify-between">
-        <span className={active ? 'text-accent' : 'text-text-muted'}>{icon}</span>
-        <span
-          className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-            active ? 'bg-accent/20 text-accent' : 'bg-bg-base text-text-muted'
-          }`}
-        >
-          {subtitle}
-        </span>
-      </div>
-      <p className={`text-base font-bold ${active ? 'text-accent' : 'text-text-primary'}`}>
-        {title}
-      </p>
-      <div className="mt-1.5 space-y-0.5">
-        {specs.map((s) => (
-          <p key={s} className="text-[11px] text-text-muted">
-            {s}
-          </p>
-        ))}
-      </div>
-      <p className="mt-2 text-[11px] leading-relaxed text-text-secondary">{desc}</p>
-    </button>
-  )
-}
-
 export function ToggleRow({
   icon,
   label,
@@ -221,8 +170,8 @@ export function ToggleRow({
         </div>
         <button
           onClick={onToggle}
-          className={`relative h-6 w-10 rounded-full transition-colors duration-300 ease-out-quart ${
-            active ? 'bg-accent shadow-glow' : 'bg-border'
+          className={`relative h-6 w-10 rounded-full transition-colors duration-300 ${
+            active ? 'bg-accent' : 'bg-border'
           }`}
         >
           <div

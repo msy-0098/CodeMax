@@ -21,3 +21,7 @@ known_hosts_tmp
 
 # 翻译缓存
 .translate-cache.json
+
+# 临时设计/技能缓存
+.superpowers/
+

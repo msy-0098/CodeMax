@@ -3,19 +3,25 @@ import { errorResult, collectToolCalls, sanitizeContent } from './context'
 import type { StreamHandlers, SingleCallResult } from './types'
 import { normaliseUsage, normalizeToolSchemas } from '../../shared/cache'
 import type { NormalizedUsage } from '../../shared/cache'
-import { parseStreamChunk, shouldRetryWithoutStreamOptions } from './stream-parse'
+import { parseStreamChunk, shouldRetryWithoutStreamOptions, shouldRetryWithMinimalBody } from './stream-parse'
 
 // ---------- 常量 ----------
 
 /** 流式连接断开最大重试次数 — 重放便宜是因为 prompt cache 命中 */
-const MAX_STREAM_RECONNECTS = 3
+const MAX_STREAM_RECONNECTS = 5
+/** 指数退避基础延迟（毫秒） */
+const BASE_RETRY_DELAY_MS = 500
+/** 最大重试延迟（毫秒） */
+const MAX_RETRY_DELAY_MS = 5000
 
 /**
  * 将应用层 ReasoningEffort 映射为 DeepSeek API 支持的 reasoning_effort 值。
  * 'ultra' 是应用层自定义等级（工程范式 + 监督审查），API 层等价于 'max'。
  */
 export function toApiEffort(effort: ReasoningEffort): 'off' | 'high' | 'max' {
-  return effort === 'ultra' ? 'max' : effort
+  if (effort === 'off') return 'off'
+  if (effort === 'ultra' || effort === 'max') return 'max'
+  return 'high'
 }
 
 export interface RequestBodyParams {
@@ -28,17 +34,23 @@ export interface RequestBodyParams {
   temperature: number
   maxTokens: number
   includeUsage?: boolean
+  /** 最小请求体：仅 model/messages/stream，兼容拒绝可选参数的网关（如硅基流动） */
+  minimal?: boolean
 }
 
 /** 构造 /chat/completions 请求体 — 纯函数便于单测 */
 export function buildRequestBody(params: RequestBodyParams): Record<string, unknown> {
-  const { model, messages, tools, thinkingMode, reasoningEffort, supportsThinking, temperature, maxTokens, includeUsage = true } = params
+  const { model, messages, tools, thinkingMode, reasoningEffort, supportsThinking, temperature, maxTokens, includeUsage = true, minimal = false } = params
   const body: Record<string, unknown> = {
     model,
     messages,
-    stream: true,
-    max_tokens: maxTokens
+    stream: true
   }
+
+  // 最小请求体：只保留核心字段，兜底兼容拒绝可选参数的聚合网关
+  if (minimal) return body
+
+  body.max_tokens = maxTokens
 
   if (includeUsage) {
     body.stream_options = { include_usage: true }
@@ -86,7 +98,8 @@ async function callStreamOnce(
   maxTokens: number,
   handlers: StreamHandlers,
   emittedRef: { value: boolean },
-  includeUsage: boolean = true
+  includeUsage: boolean = true,
+  minimal: boolean = false
 ): Promise<SingleCallResult> {
   const { onChunk, signal } = handlers
 
@@ -107,7 +120,8 @@ async function callStreamOnce(
     supportsThinking,
     temperature,
     maxTokens,
-    includeUsage
+    includeUsage,
+    minimal
   })
 
   let response: Response
@@ -137,8 +151,12 @@ async function callStreamOnce(
       errText = errJson?.error?.message || errText
     } catch { /* keep raw */ }
     // 聚合网关对 stream_options 兼容性差：400 且命中关键字时去掉该参数重试一次
-    if (includeUsage && shouldRetryWithoutStreamOptions(response.status, errText)) {
-      return callStreamOnce(apiKey, baseUrl, model, messages, tools, thinkingMode, supportsThinking, reasoningEffort, temperature, maxTokens, handlers, emittedRef, false)
+    if (includeUsage && !minimal && shouldRetryWithoutStreamOptions(response.status, errText)) {
+      return callStreamOnce(apiKey, baseUrl, model, messages, tools, thinkingMode, supportsThinking, reasoningEffort, temperature, maxTokens, handlers, emittedRef, false, false)
+    }
+    // 二级兜底：网关仍拒绝可选参数（tools/温度/max_tokens 等）时用最小请求体重试一次
+    if (!minimal && shouldRetryWithMinimalBody(response.status, errText)) {
+      return callStreamOnce(apiKey, baseUrl, model, messages, tools, thinkingMode, supportsThinking, reasoningEffort, temperature, maxTokens, handlers, emittedRef, false, true)
     }
     return { finishReason: 'error', content: '', reasoningContent: '', toolCalls: [], error: `API 请求失败 (${response.status})：${errText || response.statusText}`, emitted: false }
   }
@@ -275,13 +293,25 @@ async function callStreamOnce(
 // ---------- 公开接口：带 emitted 标志 + 零输出重放的流式调用 ----------
 
 /**
- * callStream — C1 emitted 标志 + 零输出重放
+ * 指数退避延迟
+ * @param attempt 当前重试次数（从0开始）
+ * @returns 延迟毫秒数
+ */
+function getRetryDelay(attempt: number): number {
+  const delay = Math.min(BASE_RETRY_DELAY_MS * Math.pow(2, attempt), MAX_RETRY_DELAY_MS)
+  // 添加 ±20% 的随机抖动，避免多个请求同时重试
+  const jitter = delay * 0.2 * (Math.random() - 0.5)
+  return Math.round(delay + jitter)
+}
+
+/**
+ * callStream — 改进版：指数退避 + 零输出重放
  *
- * 参考 Reasonix 的 streamWithReconnect：
- * - 维护 emitted 标志：任何 reasoning/text/tool_call chunk 已发出则为 true
- * - 连接断开时：emitted=false → 重放整个请求（≤ MAX_STREAM_RECONNECTS 次）
- * - 连接断开时：emitted=true → 上报错误，不重放（避免重复输出）
- * - 重放便宜是因为 prompt cache 命中
+ * 优化点：
+ * 1. 增加指数退避（500ms → 1s → 2s → 4s → 5s）避免立即重试加剧网络拥塞
+ * 2. 添加随机抖动避免多个请求同时重试
+ * 3. 更细粒度的错误分类（网络错误 vs API 错误）
+ * 4. 已发出内容时保存部分结果而非直接报错
  */
 export async function callStream(
   apiKey: string,
@@ -300,7 +330,16 @@ export async function callStream(
     return errorResult('未配置 API Key。')
   }
 
+  let lastResult: SingleCallResult | null = null
+
   for (let attempt = 0; attempt <= MAX_STREAM_RECONNECTS; attempt++) {
+    // 非首次重试时，使用指数退避
+    if (attempt > 0) {
+      const delay = getRetryDelay(attempt - 1)
+      console.log(`[callStream] 第 ${attempt} 次重试，等待 ${delay}ms...`)
+      await new Promise((resolve) => setTimeout(resolve, delay))
+    }
+
     const emittedRef = { value: false }
     const result = await callStreamOnce(
       apiKey, baseUrl, model, messages, tools,
@@ -308,23 +347,28 @@ export async function callStream(
       handlers, emittedRef
     )
 
+    lastResult = result
+
     // 成功或非连接错误 → 直接返回
     if (result.finishReason !== 'error') return result
     if (!isConnResetError(result.error)) return result
 
     // 已有部分输出 → 不重放，避免重复
     if (emittedRef.value) {
-      return { ...result, error: `流式传输中断（已有部分输出，不重放）：${result.error}` }
+      console.warn(`[callStream] 流式传输中断（已有部分输出）：${result.error}`)
+      return { ...result, error: `流式传输中断，已输出部分内容。错误：${result.error}` }
     }
 
-    // 零输出 + 连接断开 → 重放（最后一次也返回错误）
+    // 零输出 + 连接断开 → 继续重试
+    console.warn(`[callStream] 第 ${attempt + 1} 次尝试失败（无输出）：${result.error}`)
+
+    // 最后一次也失败
     if (attempt >= MAX_STREAM_RECONNECTS) {
-      return { ...result, error: `流式连接断开，已重试 ${MAX_STREAM_RECONNECTS} 次仍失败：${result.error}` }
+      return { ...result, error: `流式连接断开，已重试 ${MAX_STREAM_RECONNECTS} 次仍失败。最后错误：${result.error}` }
     }
-    // 继续重试
   }
 
-  return errorResult('重试次数已用尽')
+  return lastResult ?? errorResult('重试次数已用尽')
 }
 
 /** 判断错误是否为连接断开（可重放） */

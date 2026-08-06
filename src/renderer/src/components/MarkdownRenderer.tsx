@@ -6,9 +6,15 @@ import { MermaidBlock } from './MermaidBlock'
 
 interface MarkdownRendererProps {
   content: string
+  /**
+   * 流式期间为 true：代码块跳过语法高亮、mermaid 跳过渲染，
+   * 避免不完整的代码/图表在每次流式 flush 时被重复重算（主要卡顿来源）。
+   * 流式结束后（false）再完整高亮 / 渲染一次。
+   */
+  streaming?: boolean
 }
 
-export const MarkdownRenderer = memo(function MarkdownRenderer({ content }: MarkdownRendererProps): React.ReactElement {
+export const MarkdownRenderer = memo(function MarkdownRenderer({ content, streaming = false }: MarkdownRendererProps): React.ReactElement {
   return (
     <div className="markdown-body">
       <ReactMarkdown
@@ -22,12 +28,12 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content }: Mark
 
             // mermaid 代码块
             if (lang === 'mermaid') {
-              return <MermaidBlock chart={text} />
+              return <MermaidBlock chart={text} streaming={streaming} />
             }
 
             // 带语言标注的多行代码块
             if (lang) {
-              return <CodeBlock language={lang} value={text} />
+              return <CodeBlock language={lang} value={text} streaming={streaming} />
             }
 
             // 行内代码

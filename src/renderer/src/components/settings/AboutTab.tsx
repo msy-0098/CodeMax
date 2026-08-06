@@ -123,8 +123,8 @@ export function AboutTab(): React.ReactElement {
     <div className="space-y-5">
       {/* 应用信息 */}
       <div className="flex items-center gap-4 rounded-xl border border-border bg-bg-elevated p-5">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-accent-muted shadow-lg shadow-accent/20">
-          <Cpu size={28} className="text-white" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-border-subtle bg-bg-surface">
+          <Cpu size={28} className="text-accent" />
         </div>
         <div>
           <h3 className="text-lg font-bold text-text-primary">CodeMax</h3>

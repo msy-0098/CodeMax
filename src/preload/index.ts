@@ -32,7 +32,9 @@ const api = {
     },
     cancel: (): Promise<void> => ipcRenderer.invoke('chat:cancel'),
     test: (apiKey: string, baseUrl: string, model: string): Promise<TestResult> =>
-      ipcRenderer.invoke('chat:test', apiKey, baseUrl, model)
+      ipcRenderer.invoke('chat:test', apiKey, baseUrl, model),
+    summarize: (messages: { role: string; content: string }[]): Promise<{ summary?: string; error?: string }> =>
+      ipcRenderer.invoke('chat:summarize', messages)
   },
   settings: {
     load: (): Promise<AppSettings> => ipcRenderer.invoke('settings:load'),
@@ -240,6 +242,12 @@ const api = {
 
   // 获取应用版本
   getVersion: (): Promise<string> => ipcRenderer.invoke('app:getVersion'),
+  // 流式状态上报 — 主进程据此动态开关后台节流（空闲节流 / 流式放开）
+  streaming: {
+    setActive: (active: boolean): void => {
+      ipcRenderer.send('streaming:state', active)
+    }
+  },
   // 本地 BPE 分词器 — 本地 token 计数（与 API 口径一致）
   tokenizer: {
     count: (text: string): Promise<{ success: boolean; count: number; error?: string }> =>

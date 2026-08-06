@@ -54,3 +54,21 @@ export function shouldRetryWithoutStreamOptions(status: number, errorText: strin
   const lower = errorText.toLowerCase()
   return STREAM_OPTIONS_ERROR_KEYWORDS.some((k) => lower.includes(k))
 }
+
+const MINIMAL_BODY_ERROR_KEYWORDS = [
+  'unsupported',
+  'not supported',
+  'unknown parameter',
+  'unknown field',
+  'invalid parameter',
+  'unexpected field',
+  'unrecognized',
+  'does not allow'
+]
+
+/** 400 错误是否为网关拒绝可选参数（tools/温度/max_tokens/stream_options 等）— 可用最小请求体重试一次 */
+export function shouldRetryWithMinimalBody(status: number, errorText: string): boolean {
+  if (status !== 400) return false
+  const lower = errorText.toLowerCase()
+  return MINIMAL_BODY_ERROR_KEYWORDS.some((k) => lower.includes(k))
+}
