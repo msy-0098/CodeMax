@@ -61,3 +61,5 @@ jobs:
             release/*.dmg
             release/*.zip
           generate_release_notes: true
+          overwrite: true
+

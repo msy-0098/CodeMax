@@ -1,8 +1,8 @@
 {
   "name": "codemax",
-  "version": "1.0.7",
+  "version": "1.2.0",
   "description": "CodeMax 驱动的全能 Agent 工作台 - 办公/编程/设计三模式",
-  "author": "ximo",
+  "author": "mason-rain",
   "main": "out/main/index.js",
   "type": "module",
   "scripts": {
@@ -62,7 +62,7 @@
   "build": {
     "appId": "com.codemax.agent",
     "productName": "CodeMax",
-    "copyright": "Copyright © 2026 Masenyu",
+    "copyright": "Copyright © 2026 mason-rain",
     "directories": {
       "output": "release"
     },
@@ -70,7 +70,8 @@
       "target": [
         "nsis"
       ],
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "publisherName": "rain"
     },
     "linux": {
       "target": [
@@ -89,7 +90,8 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "publisherName": "rain"
     },
     "asarUnpack": [
       "prebuilt/**"
